@@ -2,12 +2,12 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="Senzera Dashboard", layout="wide")
-st.title("📊 Senzera Google-Bewertungen Historie")
+st.set_page_config(page_title="Senzera Google-Bewertungen Dashboard", layout="wide")
 
+# Daten laden
 def load_data():
     df = pd.read_csv('Senzera_Dashboard_Data.csv')
-    # Falls die Spalte 'Monat' noch nicht existiert (für den Übergang heute)
+    # Falls die Spalte Monat noch fehlt (für unseren Übergang heute)
     if 'Monat' not in df.columns:
         df['Monat'] = 'März 2026'
     return df
@@ -15,62 +15,98 @@ def load_data():
 try:
     df = load_data()
 except Exception as e:
-    st.error("Daten-Datei nicht gefunden.")
+    st.error("Datei 'Senzera_Dashboard_Data.csv' nicht gefunden. Bitte lade die Daten hoch.")
     st.stop()
 
-st.sidebar.header("Filter")
+st.title("📊 Senzera Vertriebssteuerung: Google-Bewertungen")
+st.markdown("Monitoring der Studio-Performance & Entwicklung in Deutschland und Österreich")
 
-# --- RL Filter ---
-if 'Regionalleitung' in df.columns:
-    rl_liste = ["Alle"] + sorted(df['Regionalleitung'].dropna().unique().tolist())
-    auswahl_rl = st.sidebar.selectbox("Regionalleitung", options=rl_liste)
-    if auswahl_rl != "Alle":
-        df_rl = df[df['Regionalleitung'] == auswahl_rl]
-    else:
-        df_rl = df
+# --- SIDEBAR FILTERS ---
+st.sidebar.header("Filter-Optionen")
+
+rl_options = ["Alle"] + sorted(df['Regionalleitung'].dropna().unique().tolist())
+selected_rl = st.sidebar.selectbox("Regionalleitung wählen", options=rl_options)
+
+if selected_rl != "Alle":
+    df_rl_filtered = df[df['Regionalleitung'] == selected_rl]
 else:
-    df_rl = df
+    df_rl_filtered = df
 
-# --- Stadt Filter ---
-city = st.sidebar.multiselect("Stadt", options=sorted(df_rl['Stadt'].unique()), default=sorted(df_rl['Stadt'].unique()))
-filtered_df = df_rl[df_rl['Stadt'].isin(city)]
+selected_city = st.sidebar.multiselect(
+    "Stadt wählen", 
+    options=sorted(df_rl_filtered['Stadt'].unique()), 
+    default=sorted(df_rl_filtered['Stadt'].unique())
+)
 
-# --- Das neue Herzstück: Die Auswertung ---
+filtered_df = df_rl_filtered[df_rl_filtered['Stadt'].isin(selected_city)]
+
+# --- HAUPTBEREICH ---
 if not filtered_df.empty:
-    # Wir filtern die aktuellsten Zahlen für die Info-Kästchen oben
+    # Wir suchen uns den aktuellsten Monat für die Info-Kästchen oben
     monate = filtered_df['Monat'].unique()
-    aktueller_monat = monate[-1] # Nimmt immer den zuletzt hinzugefügten Monat
+    aktueller_monat = monate[-1] 
     df_aktuell = filtered_df[filtered_df['Monat'] == aktueller_monat]
 
     st.markdown(f"### Aktueller Stand: **{aktueller_monat}**")
 
-    # KPIs
+    # --- KPI ROW ---
     kpi1, kpi2, kpi3 = st.columns(3)
-    kpi1.metric("Ø-Sterne (Aktuell)", round(df_aktuell['Rating'].mean(), 2))
-    kpi2.metric("Gesamt Bewertungen", df_aktuell['TotalReviews'].sum())
-    kpi3.metric("Neue Bewertungen im Monat", df_aktuell['NewReviews'].sum())
+    avg_rating = df_aktuell['Rating'].mean()
+    if pd.isna(avg_rating): avg_rating = 0.0
+
+    kpi1.metric("Durchschnitts-Rating", f"{avg_rating:.2f} ⭐", delta=None)
+    kpi2.metric("Gesamt-Rezensionen", f"{df_aktuell['TotalReviews'].sum():,}", delta=None)
+    kpi3.metric("Neue Rezensionen (Monat)", f"+{df_aktuell['NewReviews'].sum()}", delta="Zuwachs")
 
     st.divider()
-    
+
+    # --- CHARTS ---
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        st.subheader("📈 Entwicklung (Neue Bewertungen)")
-        # Gruppieren nach Monat für das Liniendiagramm
-        trend_df = filtered_df.groupby('Monat', sort=False)['NewReviews'].sum().reset_index()
-        fig_trend = px.line(trend_df, x='Monat', y='NewReviews', markers=True)
-        fig_trend.update_traces(line_color='#FF4B4B', line_width=4, marker_size=12)
-        st.plotly_chart(fig_trend, use_container_width=True)
+        # Hier ist dein altes, gewünschtes Diagramm wieder!
+        st.subheader("🏆 Top 10 Studios nach Rating")
+        top_studios = df_aktuell.sort_values('Rating', ascending=False).head(10)
+        fig_rating = px.bar(top_studios, x='Studiokürzel', y='Rating', color='Rating',
+                            color_continuous_scale='RdYlGn', range_y=[3.5, 5.0])
+        st.plotly_chart(fig_rating, use_container_width=True)
 
     with col2:
-        st.subheader(f"🏆 Top 10 Zuwächse in {aktueller_monat}")
-        top_studios = df_aktuell.sort_values('NewReviews', ascending=False).head(10)
-        fig_bar = px.bar(top_studios, x='Studiokürzel', y='NewReviews', color='NewReviews', color_continuous_scale='Viridis')
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.subheader("📈 Entwicklung über die Monate")
+        
+        # Daten für den zeitlichen Verlauf gruppieren
+        trend_df = filtered_df.groupby('Monat', sort=False).agg(
+            NewReviews=('NewReviews', 'sum'),
+            Rating=('Rating', 'mean')
+        ).reset_index()
 
-    # Tabelle ganz unten
-    with st.expander("Gesamte Datenliste einblenden"):
-        st.dataframe(filtered_df)
+        # Wir nutzen Reiter (Tabs), um beide Kurven sauber zu trennen
+        tab1, tab2 = st.tabs(["Anzahl neue Bewertungen", "Ø-Sterne"])
+        
+        with tab1:
+            fig_trend_reviews = px.line(trend_df, x='Monat', y='NewReviews', markers=True)
+            fig_trend_reviews.update_traces(line_color='#FF4B4B', line_width=4, marker_size=12)
+            st.plotly_chart(fig_trend_reviews, use_container_width=True)
+            
+        with tab2:
+            fig_trend_rating = px.line(trend_df, x='Monat', y='Rating', markers=True)
+            fig_trend_rating.update_traces(line_color='#1f77b4', line_width=4, marker_size=12)
+            # Y-Achse auf 3.5 bis 5.0 fixieren, damit kleine Schwankungen nicht extrem aussehen
+            fig_trend_rating.update_layout(yaxis_range=[3.5, 5.0])
+            st.plotly_chart(fig_trend_rating, use_container_width=True)
+
+
+    # --- CRITICAL LIST ---
+    st.subheader("🚨 Handlungsbedarf (Studios < 4.2 Sterne)")
+    critical_df = df_aktuell[df_aktuell['Rating'] < 4.2].sort_values('Rating')
+    if not critical_df.empty:
+        st.dataframe(critical_df[['Studiokürzel', 'Regionalleitung', 'Stadt', 'Rating', 'TotalReviews', 'NewReviews']], use_container_width=True)
+    else:
+        st.success("Keine kritischen Studios im gewählten Filter!")
+
+    # --- DATA TABLE ---
+    with st.expander("Gesamte Datenliste (inklusive Historie) anzeigen"):
+        st.dataframe(filtered_df, use_container_width=True)
 
 else:
     st.info("Bitte wähle eine Stadt oder Regionalleitung aus.")
