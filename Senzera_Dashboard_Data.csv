@@ -1,7 +1,7 @@
 Studiokürzel,Regionalleitung,Stadt,Strasse + HNr,Rating,TotalReviews,NewReviews
-AC1,REK,Aachen,Holzgraben 17,4.5,187,0
-A1,SAW,Augsburg,Schaezlerstrasse 2,4.4,207,0
-B1,JOS,Berlin,Meinekestraße 26,4.4,138,0
+AC1,REK,Aachen,Holzgraben 17,4.5,188,1
+A1,SAW,Augsburg,Schaezlerstrasse 2,4.4,208,1
+B1,JOS,Berlin,Meinekestraße 26,4.4,139,1
 B2,JOS,Berlin,Monbijouplatz 3,4.5,182,0
 B3,JOS,Berlin,Kollwitzstraße 28,4.7,124,0
 B4,JOS,Berlin,Rheinstrasse 45,4.7,144,0
@@ -46,7 +46,7 @@ S1,ANI,Stuttgart,Marienstrasse 36b,4.5,170,0
 S2,ANI,Stuttgart,Hirschstraße 8,4.8,221,0
 S3,ANI,Stuttgart,Büchsenstraße 26b,4.4,182,0
 AT1,DED,Wien,Alserstraße 43,4.6,267,0
-AT2,DED,Wien,Landstraßer Hauptstraße 104,4.8,222,0
+AT2,DED,Wien,Landstraßer Hauptstraße 104,4.8,223,1
 AT3,DED,Wien,Barnabitengasse 10,4.7,326,0
 AT4,DED,Wien,Wollzeile 30,4.7,182,0
 WI1,ANI,Wiesbaden,Michelsberg 3,4.3,160,0
