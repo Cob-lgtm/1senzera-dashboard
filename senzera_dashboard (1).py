@@ -10,6 +10,11 @@ def load_data():
     # Falls die Spalte Monat noch fehlt (für unseren Übergang heute)
     if 'Monat' not in df.columns:
         df['Monat'] = 'März 2026'
+        
+    # Neue, hübsche Spalte für unseren Studio-Filter basteln
+    if 'Studio_Display' not in df.columns:
+        df['Studio_Display'] = df['Studiokürzel'] + " - " + df['Strasse + HNr']
+        
     return df
 
 try:
@@ -24,21 +29,35 @@ st.markdown("Monitoring der Studio-Performance & Entwicklung in Deutschland und 
 # --- SIDEBAR FILTERS ---
 st.sidebar.header("Filter-Optionen")
 
+# 1. Filter: Regionalleitung
 rl_options = ["Alle"] + sorted(df['Regionalleitung'].dropna().unique().tolist())
 selected_rl = st.sidebar.selectbox("Regionalleitung wählen", options=rl_options)
 
 if selected_rl != "Alle":
-    df_rl_filtered = df[df['Regionalleitung'] == selected_rl]
+    df_rl = df[df['Regionalleitung'] == selected_rl]
 else:
-    df_rl_filtered = df
+    df_rl = df
 
+# 2. Filter: Stadt
+city_options = sorted(df_rl['Stadt'].unique())
 selected_city = st.sidebar.multiselect(
     "Stadt wählen", 
-    options=sorted(df_rl_filtered['Stadt'].unique()), 
-    default=sorted(df_rl_filtered['Stadt'].unique())
+    options=city_options, 
+    default=city_options
+)
+df_city = df_rl[df_rl['Stadt'].isin(selected_city)]
+
+# 3. Filter: Einzelnes Studio (NEU)
+studio_options = sorted(df_city['Studio_Display'].unique())
+selected_studios = st.sidebar.multiselect(
+    "Studio wählen",
+    options=studio_options,
+    default=studio_options
 )
 
-filtered_df = df_rl_filtered[df_rl_filtered['Stadt'].isin(selected_city)]
+# Finaler Filter wird angewendet
+filtered_df = df_city[df_city['Studio_Display'].isin(selected_studios)]
+
 
 # --- HAUPTBEREICH ---
 if not filtered_df.empty:
@@ -64,7 +83,6 @@ if not filtered_df.empty:
     col1, col2 = st.columns(2)
 
     with col1:
-        # Hier ist dein altes, gewünschtes Diagramm wieder!
         st.subheader("🏆 Top 10 Studios nach Rating")
         top_studios = df_aktuell.sort_values('Rating', ascending=False).head(10)
         fig_rating = px.bar(top_studios, x='Studiokürzel', y='Rating', color='Rating',
@@ -80,7 +98,6 @@ if not filtered_df.empty:
             Rating=('Rating', 'mean')
         ).reset_index()
 
-        # Wir nutzen Reiter (Tabs), um beide Kurven sauber zu trennen
         tab1, tab2 = st.tabs(["Anzahl neue Bewertungen", "Ø-Sterne"])
         
         with tab1:
@@ -91,10 +108,8 @@ if not filtered_df.empty:
         with tab2:
             fig_trend_rating = px.line(trend_df, x='Monat', y='Rating', markers=True)
             fig_trend_rating.update_traces(line_color='#1f77b4', line_width=4, marker_size=12)
-            # Y-Achse auf 3.5 bis 5.0 fixieren, damit kleine Schwankungen nicht extrem aussehen
             fig_trend_rating.update_layout(yaxis_range=[3.5, 5.0])
             st.plotly_chart(fig_trend_rating, use_container_width=True)
-
 
     # --- CRITICAL LIST ---
     st.subheader("🚨 Handlungsbedarf (Studios < 4.2 Sterne)")
@@ -106,7 +121,8 @@ if not filtered_df.empty:
 
     # --- DATA TABLE ---
     with st.expander("Gesamte Datenliste (inklusive Historie) anzeigen"):
-        st.dataframe(filtered_df, use_container_width=True)
+        # Wir blenden die Hilfsspalte 'Studio_Display' für die Ansicht wieder aus, damit es sauber aussieht
+        st.dataframe(filtered_df.drop(columns=['Studio_Display']), use_container_width=True)
 
 else:
-    st.info("Bitte wähle eine Stadt oder Regionalleitung aus.")
+    st.info("Bitte wähle mindestens ein Studio aus.")
