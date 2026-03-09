@@ -71,9 +71,9 @@ if not filtered_df.empty:
         
     kpi4.metric("Ø-Rating der Neuen", f"{weighted_new_rating:.2f} ⭐", delta="Diesen Monat")
 
-    st.write("") # Kleiner Abstand
+    st.write("") 
 
-    # --- 🚨 DER ALARM-BEREICH inkl. HANDLUNGSEMPFEHLUNG 🚨 ---
+    # --- 🚨 DER ALARM-BEREICH ---
     critical_df = df_aktuell[df_aktuell['Rating'] < 4.2].sort_values('Rating')
     if not critical_df.empty:
         st.error("🚨 **ALARM: Handlungsbedarf!** Folgende Studios sind im aktuellen Monat unter 4,2 Sterne gerutscht:")
@@ -81,19 +81,16 @@ if not filtered_df.empty:
         
         with st.expander("💡 Action-Plan: So holen wir die Sterne zurück!"):
             st.markdown("""
-            **1. 🛒 Material sichern (Monatsbestellung)** Bitte denkt daran, über die nächste Monatsbestellung sofort frische **Google-Bewertungskarten** für das betroffene Studio zu ordern. Ohne Material können die Mädels vor Ort nicht arbeiten!
-            
-            **2. 📢 Team-Sensibilisierung** Macht das gesamte Team im Studio auf die aktuelle Bewertungssituation aufmerksam. Jeder einzelne Stern ist wichtig, um neue Kundinnen zu gewinnen.
-            
-            **3. ✨ Der perfekte Moment (Nach der Behandlung)** Erinnert alle Mitarbeiterinnen daran, die Karten **aktiv** nach der Behandlung mitzugeben.  
-            *Unser Tipp für die Kundenansprache:* > *"Wenn du dich heute bei uns wohlgefühlt hast, würden wir uns riesig über 5 Sterne auf Google freuen! Hier ist eine kleine Erinnerungskarte für dich."*
+            **1. 🛒 Material sichern (Monatsbestellung)** Bitte denkt daran, über die nächste Monatsbestellung sofort frische **Google-Bewertungskarten** für das betroffene Studio zu ordern.
+            **2. 📢 Team-Sensibilisierung** Macht das gesamte Team im Studio auf die aktuelle Bewertungssituation aufmerksam.
+            **3. ✨ Der perfekte Moment** Erinnert alle Mitarbeiterinnen daran, die Karten **aktiv** nach der Behandlung mitzugeben.
             """)
     else:
         st.success("✅ **Alles im grünen Bereich:** Keine kritischen Studios (unter 4,2 Sterne) im gewählten Filter!")
 
     st.divider()
 
-    # --- NEU: GEWINNER DES MONATS ---
+    # --- GEWINNER DES MONATS ---
     st.subheader("🚀 Gewinner des Monats (Meiste neue Bewertungen)")
     gewinner_df = df_aktuell[df_aktuell['NewReviews'] > 0].sort_values('NewReviews', ascending=False).head(5)
     
@@ -101,14 +98,14 @@ if not filtered_df.empty:
         fig_gewinner = px.bar(gewinner_df, x='NewReviews', y='Studiokürzel', orientation='h', 
                               color='NewReviews', color_continuous_scale='Reds',
                               title=f"Top 5 Zuwächse in {aktueller_monat}")
-        fig_gewinner.update_layout(yaxis={'categoryorder':'total ascending'}) # Längster Balken oben
+        fig_gewinner.update_layout(yaxis={'categoryorder':'total ascending'}) 
         st.plotly_chart(fig_gewinner, use_container_width=True)
     else:
         st.info("In diesem Monat gibt es in der aktuellen Filterung noch keine neuen Bewertungen.")
 
     st.divider()
 
-    # --- CHARTS (BESTE STUDIOS & ENTWICKLUNG) ---
+    # --- CHARTS ---
     col1, col2 = st.columns(2)
 
     with col1:
@@ -136,19 +133,62 @@ if not filtered_df.empty:
             fig_trend_rating.update_layout(yaxis_range=[3.5, 5.0])
             st.plotly_chart(fig_trend_rating, use_container_width=True)
 
-    # --- DATA TABLE & EXPORT ---
-    st.write("")
-    with st.expander("📋 Gesamte Datenliste anzeigen & exportieren"):
-        ansicht_df = filtered_df.drop(columns=['Studio_Display'])
-        st.dataframe(ansicht_df, use_container_width=True)
+    st.divider()
+
+    # --- NEU: AUTOMATISCHER BERICHT & EXPORT ---
+    st.subheader("📝 Automatischer Monatsbericht & Export")
+    
+    # Text-Generator für den Bericht
+    team_name = f"Region {selected_rl}" if selected_rl != "Alle" else "Senzera-Team"
+    
+    bericht_text = f"Hallo liebes {team_name},\n\nhier ist unser kurzes Google-Bewertungs-Update für den Monat {aktueller_monat}!\n\n"
+    bericht_text += f"📊 UNSERE ZAHLEN IM ÜBERBLICK:\n"
+    bericht_text += f"- Durchschnittliche Bewertung: {avg_rating:.2f} Sterne\n"
+    bericht_text += f"- Neue Bewertungen in diesem Monat: +{df_aktuell['NewReviews'].sum()}\n"
+    bericht_text += f"- Schnitt der NEUEN Bewertungen: {weighted_new_rating:.2f} Sterne\n\n"
+    
+    if not gewinner_df.empty:
+        bericht_text += "🚀 UNSERE TOP-PERFORMER (Meiste neue Bewertungen):\n"
+        for _, row in gewinner_df.iterrows():
+            bericht_text += f"  • {row['Stadt']} ({row['Studiokürzel']}): +{row['NewReviews']} neue Bewertungen\n"
+        bericht_text += "Klasse Arbeit, weiter so!\n\n"
         
-        # --- NEU: EXPORT BUTTON ---
+    if not critical_df.empty:
+        bericht_text += "🚨 WICHTIG: HANDLUNGSBEDARF\n"
+        bericht_text += "Folgende Studios liegen aktuell leider unter 4,2 Sternen. Bitte denkt an die Bewertungskarten und sprecht das Thema im Team an:\n"
+        for _, row in critical_df.iterrows():
+            bericht_text += f"  • {row['Stadt']} ({row['Studiokürzel']}): {row['Rating']} Sterne\n"
+        bericht_text += "\n"
+        
+    bericht_text += "Vielen Dank für euren tollen Einsatz! Lasst uns im nächsten Monat noch mehr Sterne sammeln!\n"
+
+    # Ansicht und Download im Dashboard
+    col_text, col_export = st.columns([2, 1])
+    
+    with col_text:
+        st.markdown("**E-Mail Vorlage (wird automatisch aus deinen Filtern generiert):**")
+        st.text_area("Kopiere diesen Text einfach heraus:", value=bericht_text, height=300)
+        
+    with col_export:
+        st.markdown("**Bericht herunterladen:**")
+        st.download_button(
+            label="📄 Bericht als Text-Datei laden",
+            data=bericht_text,
+            file_name=f'Monatsbericht_{aktueller_monat}_{selected_rl}.txt',
+            mime='text/plain',
+            use_container_width=True
+        )
+        
+        st.write("")
+        st.markdown("**Zahlen herunterladen:**")
+        ansicht_df = filtered_df.drop(columns=['Studio_Display'])
         csv_export = ansicht_df.to_csv(index=False, sep=';').encode('utf-8-sig')
         st.download_button(
-            label="📥 Diese Tabelle als CSV für Excel herunterladen",
+            label="📥 Tabelle als CSV für Excel laden",
             data=csv_export,
             file_name=f'Senzera_Bewertungen_{aktueller_monat}.csv',
             mime='text/csv',
+            use_container_width=True
         )
 
 else:
