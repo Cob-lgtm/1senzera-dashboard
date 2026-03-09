@@ -5,6 +5,10 @@ import numpy as np
 
 st.set_page_config(page_title="Senzera Google-Bewertungen Dashboard", layout="wide")
 
+# --- SENZERA BRANDING FARBEN ---
+SENZERA_PINK = '#D81B60'
+SENZERA_BLUE = '#1f77b4'
+
 def load_data():
     df = pd.read_csv('Senzera_Dashboard_Data.csv')
     if 'Monat' not in df.columns:
@@ -21,8 +25,8 @@ except Exception as e:
     st.error("Datei 'Senzera_Dashboard_Data.csv' nicht gefunden. Bitte lade die Daten hoch.")
     st.stop()
 
-st.title("📊 Senzera Vertriebssteuerung: Google-Bewertungen")
-st.markdown("Monitoring der Studio-Performance & Entwicklung in Deutschland und Österreich")
+st.title("📊 Senzera Vertriebssteuerung")
+st.markdown("**Google-Bewertungen: Monitoring & Entwicklung in Deutschland und Österreich**")
 
 # --- SIDEBAR FILTERS ---
 st.sidebar.header("Filter-Optionen")
@@ -69,13 +73,12 @@ if not filtered_df.empty:
 
     st.write("") # Kleiner Abstand
 
-    # --- 🚨 DER NEUE PROMINENTE ALARM-BEREICH inkl. HANDLUNGSEMPFEHLUNG 🚨 ---
+    # --- 🚨 DER ALARM-BEREICH inkl. HANDLUNGSEMPFEHLUNG 🚨 ---
     critical_df = df_aktuell[df_aktuell['Rating'] < 4.2].sort_values('Rating')
     if not critical_df.empty:
         st.error("🚨 **ALARM: Handlungsbedarf!** Folgende Studios sind im aktuellen Monat unter 4,2 Sterne gerutscht:")
         st.dataframe(critical_df[['Studiokürzel', 'Regionalleitung', 'Stadt', 'Rating', 'TotalReviews', 'NewReviews']], use_container_width=True)
         
-        # Das neue "Drop-Down" (Expander) direkt darunter
         with st.expander("💡 Action-Plan: So holen wir die Sterne zurück!"):
             st.markdown("""
             **1. 🛒 Material sichern (Monatsbestellung)** Bitte denkt daran, über die nächste Monatsbestellung sofort frische **Google-Bewertungskarten** für das betroffene Studio zu ordern. Ohne Material können die Mädels vor Ort nicht arbeiten!
@@ -90,7 +93,22 @@ if not filtered_df.empty:
 
     st.divider()
 
-    # --- CHARTS ---
+    # --- NEU: GEWINNER DES MONATS ---
+    st.subheader("🚀 Gewinner des Monats (Meiste neue Bewertungen)")
+    gewinner_df = df_aktuell[df_aktuell['NewReviews'] > 0].sort_values('NewReviews', ascending=False).head(5)
+    
+    if not gewinner_df.empty:
+        fig_gewinner = px.bar(gewinner_df, x='NewReviews', y='Studiokürzel', orientation='h', 
+                              color='NewReviews', color_continuous_scale='Reds',
+                              title=f"Top 5 Zuwächse in {aktueller_monat}")
+        fig_gewinner.update_layout(yaxis={'categoryorder':'total ascending'}) # Längster Balken oben
+        st.plotly_chart(fig_gewinner, use_container_width=True)
+    else:
+        st.info("In diesem Monat gibt es in der aktuellen Filterung noch keine neuen Bewertungen.")
+
+    st.divider()
+
+    # --- CHARTS (BESTE STUDIOS & ENTWICKLUNG) ---
     col1, col2 = st.columns(2)
 
     with col1:
@@ -110,18 +128,28 @@ if not filtered_df.empty:
         tab1, tab2 = st.tabs(["Anzahl neue Bewertungen", "Ø-Sterne Gesamt"])
         with tab1:
             fig_trend_reviews = px.line(trend_df, x='Monat', y='NewReviews', markers=True)
-            fig_trend_reviews.update_traces(line_color='#FF4B4B', line_width=4, marker_size=12)
+            fig_trend_reviews.update_traces(line_color=SENZERA_PINK, line_width=4, marker_size=12)
             st.plotly_chart(fig_trend_reviews, use_container_width=True)
         with tab2:
             fig_trend_rating = px.line(trend_df, x='Monat', y='Rating', markers=True)
-            fig_trend_rating.update_traces(line_color='#1f77b4', line_width=4, marker_size=12)
+            fig_trend_rating.update_traces(line_color=SENZERA_BLUE, line_width=4, marker_size=12)
             fig_trend_rating.update_layout(yaxis_range=[3.5, 5.0])
             st.plotly_chart(fig_trend_rating, use_container_width=True)
 
-    # --- DATA TABLE ---
-    with st.expander("Gesamte Datenliste (inkl. Ø-Sterne der Neuen) anzeigen"):
+    # --- DATA TABLE & EXPORT ---
+    st.write("")
+    with st.expander("📋 Gesamte Datenliste anzeigen & exportieren"):
         ansicht_df = filtered_df.drop(columns=['Studio_Display'])
         st.dataframe(ansicht_df, use_container_width=True)
+        
+        # --- NEU: EXPORT BUTTON ---
+        csv_export = ansicht_df.to_csv(index=False, sep=';').encode('utf-8-sig')
+        st.download_button(
+            label="📥 Diese Tabelle als CSV für Excel herunterladen",
+            data=csv_export,
+            file_name=f'Senzera_Bewertungen_{aktueller_monat}.csv',
+            mime='text/csv',
+        )
 
 else:
     st.info("Bitte wähle mindestens ein Studio aus.")
