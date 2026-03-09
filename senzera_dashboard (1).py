@@ -69,11 +69,22 @@ if not filtered_df.empty:
 
     st.write("") # Kleiner Abstand
 
-    # --- 🚨 DER NEUE PROMINENTE ALARM-BEREICH 🚨 ---
+    # --- 🚨 DER NEUE PROMINENTE ALARM-BEREICH inkl. HANDLUNGSEMPFEHLUNG 🚨 ---
     critical_df = df_aktuell[df_aktuell['Rating'] < 4.2].sort_values('Rating')
     if not critical_df.empty:
-        st.error("🚨 **ALARM: Handlungsbedarf!** Folgende Studios sind im aktuellen Monat unter 4,2 Sterne:")
+        st.error("🚨 **ALARM: Handlungsbedarf!** Folgende Studios sind im aktuellen Monat unter 4,2 Sterne gerutscht:")
         st.dataframe(critical_df[['Studiokürzel', 'Regionalleitung', 'Stadt', 'Rating', 'TotalReviews', 'NewReviews']], use_container_width=True)
+        
+        # Das neue "Drop-Down" (Expander) direkt darunter
+        with st.expander("💡 Action-Plan: So holen wir die Sterne zurück!"):
+            st.markdown("""
+            **1. 🛒 Material sichern (Monatsbestellung)** Bitte denkt daran, über die nächste Monatsbestellung sofort frische **Google-Bewertungskarten** für das betroffene Studio zu ordern. Ohne Material können die Mädels vor Ort nicht arbeiten!
+            
+            **2. 📢 Team-Sensibilisierung** Macht das gesamte Team im Studio auf die aktuelle Bewertungssituation aufmerksam. Jeder einzelne Stern ist wichtig, um neue Kundinnen zu gewinnen.
+            
+            **3. ✨ Der perfekte Moment (Nach der Behandlung)** Erinnert alle Mitarbeiterinnen daran, die Karten **aktiv** nach der Behandlung mitzugeben.  
+            *Unser Tipp für die Kundenansprache:* > *"Wenn du dich heute bei uns wohlgefühlt hast, würden wir uns riesig über 5 Sterne auf Google freuen! Hier ist eine kleine Erinnerungskarte für dich."*
+            """)
     else:
         st.success("✅ **Alles im grünen Bereich:** Keine kritischen Studios (unter 4,2 Sterne) im gewählten Filter!")
 
