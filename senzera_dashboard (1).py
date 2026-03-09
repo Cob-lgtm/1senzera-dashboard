@@ -11,7 +11,6 @@ def load_data():
         df['Monat'] = 'März 2026'
     if 'Studio_Display' not in df.columns:
         df['Studio_Display'] = df['Studiokürzel'] + " - " + df['Strasse + HNr']
-    # Falls die neue Spalte bei alten Daten fehlt, füllen wir sie mit dem normalen Rating auf
     if 'NewRating' not in df.columns:
         df['NewRating'] = df['Rating']
     return df
@@ -52,7 +51,7 @@ if not filtered_df.empty:
 
     st.markdown(f"### Aktueller Stand: **{aktueller_monat}**")
 
-    # --- KPI ROW (JETZT 4 SPALTEN!) ---
+    # --- KPI ROW (4 SPALTEN) ---
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     avg_rating = df_aktuell['Rating'].mean()
     if pd.isna(avg_rating): avg_rating = 0.0
@@ -61,13 +60,22 @@ if not filtered_df.empty:
     kpi2.metric("Gesamt-Rezensionen", f"{df_aktuell['TotalReviews'].sum():,}")
     kpi3.metric("Neue Rezensionen", f"+{df_aktuell['NewReviews'].sum()}")
     
-    # Berechnung des Durchschnitts der neuen Sterne (Gewichtet)
     if df_aktuell['NewReviews'].sum() > 0:
         weighted_new_rating = np.average(df_aktuell['NewRating'], weights=df_aktuell['NewReviews'])
     else:
         weighted_new_rating = 0.0
         
     kpi4.metric("Ø-Rating der Neuen", f"{weighted_new_rating:.2f} ⭐", delta="Diesen Monat")
+
+    st.write("") # Kleiner Abstand
+
+    # --- 🚨 DER NEUE PROMINENTE ALARM-BEREICH 🚨 ---
+    critical_df = df_aktuell[df_aktuell['Rating'] < 4.2].sort_values('Rating')
+    if not critical_df.empty:
+        st.error("🚨 **ALARM: Handlungsbedarf!** Folgende Studios sind im aktuellen Monat unter 4,2 Sterne:")
+        st.dataframe(critical_df[['Studiokürzel', 'Regionalleitung', 'Stadt', 'Rating', 'TotalReviews', 'NewReviews']], use_container_width=True)
+    else:
+        st.success("✅ **Alles im grünen Bereich:** Keine kritischen Studios (unter 4,2 Sterne) im gewählten Filter!")
 
     st.divider()
 
