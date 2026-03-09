@@ -181,6 +181,109 @@ PLOT_GRID = T["grid"]
 ACCENT    = T["accent"]
 
 # ══════════════════════════════════════════════
+# 3. DATEN LADEN (Funktionen)
+# ══════════════════════════════════════════════
+
+@st.cache_data(show_spinner="📊 Daten werden geladen …")
+def load_google(path: str = "Senzera_Dashboard_Data.csv") -> pd.DataFrame:
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    df = pd.read_csv(path)
+    missing = REQ_GOOGLE - set(df.columns)
+    if missing:
+        st.error(f"Fehlende Spalten in '{path}': {missing}")
+        st.stop()
+    if "Monat"      not in df.columns: df["Monat"]      = "Unbekannt"
+    if "NewReviews" not in df.columns: df["NewReviews"] = 0
+    if "NPS"        not in df.columns: df["NPS"]        = None
+    df["Studio_Name"] = df["Studiokürzel"] + " (" + df["Stadt"] + ")"
+    df["Rating"]      = pd.to_numeric(df["Rating"],     errors="coerce")
+    df["NewReviews"]  = pd.to_numeric(df["NewReviews"], errors="coerce").fillna(0).astype(int)
+    df["NPS"]         = pd.to_numeric(df["NPS"],        errors="coerce")
+    return df
+
+
+@st.cache_data(show_spinner=False)
+def load_zenloop(path: str = "Zenloop_Antworten.csv") -> pd.DataFrame:
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    df = pd.read_csv(path)
+    missing = REQ_ZENLOOP - set(df.columns)
+    if missing:
+        st.warning(f"Fehlende Zenloop-Spalten: {missing}")
+    df["score"] = pd.to_numeric(df.get("score", pd.Series(dtype=float)), errors="coerce")
+    if "date_received" in df.columns:
+        df["date_received"] = pd.to_datetime(df["date_received"], errors="coerce")
+        df["Monat_zen"]     = df["date_received"].dt.to_period("M").astype(str)
+    return df
+
+
+# ══════════════════════════════════════════════
+# 4. HILFSFUNKTIONEN
+# ══════════════════════════════════════════════
+
+def calc_nps(df: pd.DataFrame) -> Optional[float]:
+    if df.empty or "score_type" not in df.columns:
+        return None
+    total = len(df)
+    if total == 0:
+        return None
+    prom = (df["score_type"] == "promoter").sum()
+    detr = (df["score_type"] == "detractor").sum()
+    return round(((prom - detr) / total) * 100, 1)
+
+
+def calc_nps_from_score(df: pd.DataFrame) -> Optional[float]:
+    if df.empty or "score" not in df.columns:
+        return None
+    scores = df["score"].dropna()
+    if len(scores) == 0:
+        return None
+    return round(((scores >= 9).sum() - (scores <= 6).sum()) / len(scores) * 100, 1)
+
+
+def calc_sentiment(df: pd.DataFrame) -> Optional[float]:
+    if df.empty or "sentiment" not in df.columns:
+        return None
+    with_c = df.dropna(subset=["comment"]) if "comment" in df.columns else df
+    with_c = with_c[with_c["comment"].astype(str).str.strip().ne("nan")]
+    if with_c.empty:
+        return None
+    return round((with_c["sentiment"] == "positive").sum() / len(with_c) * 100, 1)
+
+
+def get_top_labels(df: pd.DataFrame, n: int = 5) -> pd.Series:
+    if "labels" not in df.columns:
+        return pd.Series(dtype=int)
+    return (
+        df["labels"].dropna()
+        .str.split(";").explode()
+        .str.strip().replace("", pd.NA).dropna()
+        .value_counts().head(n)
+    )
+
+
+def get_neg_labels(df: pd.DataFrame, n: int = 5) -> pd.Series:
+    if "labels" not in df.columns or "score_type" not in df.columns:
+        return pd.Series(dtype=int)
+    return get_top_labels(df[df["score_type"] == "detractor"], n)
+
+
+def rating_emoji(r: float) -> str:
+    if r >= RATING_GOOD:     return "✅"
+    if r >= RATING_CRITICAL: return "⚠️"
+    return "🚨"
+
+
+def nps_bewertung(nps: float) -> str:
+    if nps >= 70: return "Weltklasse 🏆"
+    if nps >= 50: return "Exzellent 🌟"
+    if nps >= 30: return "Gut 👍"
+    if nps >= 0:  return "Verbesserungspotenzial ⚠️"
+    return "Kritisch 🚨"
+
+
+# ══════════════════════════════════════════════
 # 5. DATEN LADEN
 # ══════════════════════════════════════════════
 
