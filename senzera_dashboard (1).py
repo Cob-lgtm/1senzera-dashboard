@@ -107,47 +107,32 @@ if "theme" not in st.session_state:
     st.session_state["theme"] = "☀️ Hell"
 
 def apply_theme(t: dict) -> None:
-    st.markdown(f"""
-<style>
-    [data-testid="stAppViewContainer"] { background: {t['bg']} !important; }
-    [data-testid="stSidebar"]          { background: {t['sidebar_bg']} !important; border-right: 1px solid {t['sidebar_br']}; }
-    [data-testid="stHeader"]           { background: transparent; }
-    section[data-testid="stSidebar"] * { color: {t['text_body']} !important; }
-
-    [data-testid="metric-container"] {
-        background: {t['card_bg']} !important;
-        border: 1px solid {t['card_br']} !important;
-        border-radius: 10px;
-        padding: 14px 18px;
-    }
-    [data-testid="metric-container"] label,
-    [data-testid="metric-container"] p  { color: {t['text_muted']} !important; }
-    [data-testid="metric-container"] [data-testid="stMetricValue"] { color: {t['text_h']} !important; }
-
-    button[data-baseweb="tab"] {
-        font-weight: 600; font-size: 13px; letter-spacing: 0.4px;
-        color: {t['text_muted']} !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: {t['tab_active']} !important;
-        border-bottom-color: {t['tab_border']} !important;
-    }
-
-    h1, h2, h3 { color: {t['text_h']} !important; }
-    p, label, .stCaption { color: {t['text_muted']} !important; }
-    hr { border-color: {t['divider']}; margin: 1rem 0; }
-
-    [data-testid="stDataFrameResizable"] { background: {t['card_bg']} !important; }
-
-    textarea {
-        font-family: 'Courier New', monospace !important;
-        font-size: 13px !important;
-        background: {t['textarea_bg']} !important;
-        color: {t['textarea_fg']} !important;
-        border: 1px solid {t['textarea_br']} !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+    css = (
+        "<style>"
+        "[data-testid='stAppViewContainer']{background:" + t["bg"] + " !important}"
+        "[data-testid='stSidebar']{background:" + t["sidebar_bg"] + " !important; border-right:1px solid " + t["sidebar_br"] + "}"
+        "[data-testid='stHeader']{background:transparent}"
+        "section[data-testid='stSidebar'] *{color:" + t["text_body"] + " !important}"
+        "[data-testid='metric-container']{"
+            "background:" + t["card_bg"] + " !important;"
+            "border:1px solid " + t["card_br"] + " !important;"
+            "border-radius:10px; padding:14px 18px}"
+        "[data-testid='metric-container'] label,"
+        "[data-testid='metric-container'] p{color:" + t["text_muted"] + " !important}"
+        "[data-testid='metric-container'] [data-testid='stMetricValue']{color:" + t["text_h"] + " !important}"
+        "button[data-baseweb='tab']{font-weight:600;font-size:13px;letter-spacing:0.4px;color:" + t["text_muted"] + " !important}"
+        "button[data-baseweb='tab'][aria-selected='true']{color:" + t["tab_active"] + " !important; border-bottom-color:" + t["tab_border"] + " !important}"
+        "h1,h2,h3{color:" + t["text_h"] + " !important}"
+        "p,label,.stCaption{color:" + t["text_muted"] + " !important}"
+        "hr{border-color:" + t["divider"] + "; margin:1rem 0}"
+        "[data-testid='stDataFrameResizable']{background:" + t["card_bg"] + " !important}"
+        "textarea{font-family:'Courier New',monospace !important; font-size:13px !important;"
+            "background:" + t["textarea_bg"] + " !important;"
+            "color:" + t["textarea_fg"] + " !important;"
+            "border:1px solid " + t["textarea_br"] + " !important}"
+        "</style>"
+    )
+    st.markdown(css, unsafe_allow_html=True)
 
 T = THEMES[st.session_state["theme"]]
 apply_theme(T)
