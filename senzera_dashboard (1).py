@@ -1,156 +1,684 @@
-import streamlit as st
+"""
+Senzera Performance Hub – Management Cockpit
+=============================================
+Vertriebssteuerungs-Dashboard für Regionalleiterinnen.
+
+Voraussetzungen:
+    pip install streamlit pandas plotly numpy
+
+Datenquellen:
+    - Senzera_Dashboard_Data.csv  (Google-Bewertungen pro Studio & Monat)
+    - Zenloop_Antworten.csv       (NPS-Umfragen mit Kommentaren)
+
+Starten:
+    streamlit run senzera_dashboard.py
+"""
+
+from __future__ import annotations
+
+import os
+from typing import Optional
+
+import numpy as np
 import pandas as pd
 import plotly.express as px
-import numpy as np
-import os
-from datetime import datetime
+import plotly.graph_objects as go
+import streamlit as st
 
-# --- CONFIG & STYLE ---
-st.set_page_config(page_title="Senzera Performance Hub", layout="wide")
+# ──────────────────────────────────────────────
+# 1. KONFIGURATION & KONSTANTEN
+# ──────────────────────────────────────────────
 
-COLOR_PINK = '#D81B60'
-COLOR_BLUE = '#1E88E5'
-COLOR_PROMOTER = '#00BFA5'
-COLOR_PASSIVE = '#FFB300'
-COLOR_DETRACTOR = '#F44336'
+st.set_page_config(
+    page_title="Senzera Performance Hub",
+    page_icon="🏆",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-# --- DATA ENGINE ---
-def load_data():
-    df_g = pd.read_csv('Senzera_Dashboard_Data.csv') if os.path.exists('Senzera_Dashboard_Data.csv') else pd.DataFrame()
-    df_z = pd.read_csv('Zenloop_Antworten.csv') if os.path.exists('Zenloop_Antworten.csv') else pd.DataFrame()
-    if not df_g.empty:
-        df_g['Monat'] = df_g.get('Monat', 'März 2026')
-        df_g['Studio_Name'] = df_g['Studiokürzel'] + " (" + df_g['Stadt'] + ")"
-    return df_g, df_z
+# Farbpalette
+C_PINK       = "#D81B60"
+C_BLUE       = "#1E88E5"
+C_PROMOTER   = "#00BFA5"
+C_PASSIVE    = "#FFB300"
+C_DETRACTOR  = "#F44336"
+C_BG_DARK    = "#0F1117"
 
-df_g, df_z = load_data()
+# Schwellwerte
+RATING_CRITICAL = 4.2
+RATING_GOOD     = 4.5
+TOP_LABELS      = 10   # Wie viele Themen-Labels werden angezeigt
+TOP_COMMENTS    = 5    # Wie viele Kommentare im Deep-Dive
 
-if df_g.empty:
-    st.error("Datei 'Senzera_Dashboard_Data.csv' nicht gefunden!")
+# Pflicht-Spalten beider Dateien
+REQUIRED_COLS_GOOGLE  = {"Studiokürzel", "Stadt", "Regionalleitung", "Rating", "NewReviews"}
+REQUIRED_COLS_ZENLOOP = {"Property - studio", "score_type", "score"}
+
+# ──────────────────────────────────────────────
+# 2. CUSTOM CSS
+# ──────────────────────────────────────────────
+
+st.markdown(
+    """
+    <style>
+        /* Globales Styling */
+        [data-testid="stAppViewContainer"] {background: #0F1117;}
+        [data-testid="stSidebar"]          {background: #161B22;}
+        [data-testid="stHeader"]           {background: transparent;}
+
+        /* Metric-Cards */
+        [data-testid="metric-container"] {
+            background: #161B22;
+            border: 1px solid #30363D;
+            border-radius: 12px;
+            padding: 16px 20px;
+        }
+
+        /* Tabs */
+        button[data-baseweb="tab"] {
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Subtitles */
+        h3 {color: #E6EDF3 !important; letter-spacing: 0.5px;}
+
+        /* Divider */
+        hr {border-color: #30363D;}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ──────────────────────────────────────────────
+# 3. DATEN LADEN & VALIDIEREN
+# ──────────────────────────────────────────────
+
+@st.cache_data(show_spinner="Daten werden geladen …")
+def load_google_data(path: str = "Senzera_Dashboard_Data.csv") -> pd.DataFrame:
+    """Lädt und bereinigt die Google-Bewertungsdaten."""
+    if not os.path.exists(path):
+        return pd.DataFrame()
+
+    df = pd.read_csv(path)
+
+    missing = REQUIRED_COLS_GOOGLE - set(df.columns)
+    if missing:
+        st.error(f"Fehlende Spalten in '{path}': {missing}")
+        st.stop()
+
+    # Monatsspalte absichern
+    if "Monat" not in df.columns:
+        df["Monat"] = "Unbekannt"
+
+    # Anzeigename kombinieren
+    df["Studio_Name"] = df["Studiokürzel"] + " (" + df["Stadt"] + ")"
+
+    # Typen sicherstellen
+    df["Rating"]     = pd.to_numeric(df["Rating"],     errors="coerce")
+    df["NewReviews"] = pd.to_numeric(df["NewReviews"], errors="coerce").fillna(0).astype(int)
+
+    return df
+
+
+@st.cache_data(show_spinner=False)
+def load_zenloop_data(path: str = "Zenloop_Antworten.csv") -> pd.DataFrame:
+    """Lädt und bereinigt die Zenloop-NPS-Daten."""
+    if not os.path.exists(path):
+        return pd.DataFrame()
+
+    df = pd.read_csv(path)
+
+    missing = REQUIRED_COLS_ZENLOOP - set(df.columns)
+    if missing:
+        st.warning(f"Fehlende Zenloop-Spalten: {missing} – einige Widgets werden ausgeblendet.")
+
+    df["score"] = pd.to_numeric(df.get("score", pd.Series(dtype=float)), errors="coerce")
+    return df
+
+
+# ──────────────────────────────────────────────
+# 4. HILFS-FUNKTIONEN
+# ──────────────────────────────────────────────
+
+def calc_nps(df: pd.DataFrame) -> Optional[float]:
+    """Berechnet den NPS-Wert. Gibt None zurück wenn keine Daten vorhanden."""
+    if df.empty or "score_type" not in df.columns:
+        return None
+    total = len(df)
+    if total == 0:
+        return None
+    promoters   = (df["score_type"] == "promoter").sum()
+    detractors  = (df["score_type"] == "detractor").sum()
+    return round(((promoters - detractors) / total) * 100, 1)
+
+
+def calc_positive_sentiment(df: pd.DataFrame) -> Optional[float]:
+    """Berechnet Anteil positiver Kommentare in Prozent."""
+    if df.empty or "sentiment" not in df.columns:
+        return None
+    comments = df.dropna(subset=["comment"]) if "comment" in df.columns else df
+    if comments.empty:
+        return None
+    positive = (comments["sentiment"] == "positive").sum()
+    return round((positive / len(comments)) * 100, 1)
+
+
+def nps_color(nps: float) -> str:
+    """Gibt eine Farbe passend zum NPS-Wert zurück."""
+    if nps >= 50:
+        return C_PROMOTER
+    if nps >= 0:
+        return C_PASSIVE
+    return C_DETRACTOR
+
+
+def studio_status_emoji(rating: float) -> str:
+    if rating >= RATING_GOOD:
+        return "✅"
+    if rating >= RATING_CRITICAL:
+        return "⚠️"
+    return "🚨"
+
+
+# ──────────────────────────────────────────────
+# 5. DATEN LADEN
+# ──────────────────────────────────────────────
+
+df_google  = load_google_data()
+df_zenloop = load_zenloop_data()
+
+if df_google.empty:
+    st.error("❌ Datei **'Senzera_Dashboard_Data.csv'** nicht gefunden!")
+    st.info("Bitte lege die Datei im selben Ordner wie dieses Skript ab und starte neu.")
     st.stop()
 
-# --- SIDEBAR ---
-st.sidebar.image("https://senzera.com/wp-content/uploads/2021/05/senzera-logo.svg", width=120)
-rl_options = ["Alle"] + sorted(df_g['Regionalleitung'].unique().tolist())
-sel_rl = st.sidebar.selectbox("Fokus Regionalleitung", rl_options)
+# ──────────────────────────────────────────────
+# 6. SIDEBAR – FILTER
+# ──────────────────────────────────────────────
 
-df_f = df_g if sel_rl == "Alle" else df_g[df_g['Regionalleitung'] == sel_rl]
-studio_options = sorted(df_f['Studio_Name'].unique().tolist())
-sel_studios = st.sidebar.multiselect("Studios wählen", studio_options, default=studio_options)
+with st.sidebar:
+    st.image(
+        "https://senzera.com/wp-content/uploads/2021/05/senzera-logo.svg",
+        width=130,
+    )
+    st.markdown("---")
+    st.markdown("### 🔍 Filter")
 
-df_final = df_f[df_f['Studio_Name'].isin(sel_studios)]
-selected_codes = df_final['Studiokürzel'].unique()
-df_z_final = df_z[df_z['Property - studio'].isin(selected_codes)] if not df_z.empty else pd.DataFrame()
+    # Regionalleitung
+    rl_options = ["Alle"] + sorted(df_google["Regionalleitung"].dropna().unique().tolist())
+    sel_rl = st.selectbox("Regionalleitung", rl_options)
 
-# --- HEADER ---
+    df_by_rl = df_google if sel_rl == "Alle" else df_google[df_google["Regionalleitung"] == sel_rl]
+
+    # Studios
+    studio_options = sorted(df_by_rl["Studio_Name"].unique().tolist())
+    sel_studios = st.multiselect(
+        "Studios",
+        studio_options,
+        default=studio_options,
+        help="Mehrfachauswahl möglich",
+    )
+
+    if not sel_studios:
+        st.warning("Bitte mindestens ein Studio auswählen.")
+        st.stop()
+
+    st.markdown("---")
+    st.caption("📌 Daten werden gecacht. Seite neu laden um zu aktualisieren.")
+    if st.button("🔄 Cache leeren", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+
+# ──────────────────────────────────────────────
+# 7. GEFILTERTE DATENSÄTZE
+# ──────────────────────────────────────────────
+
+df_view = df_by_rl[df_by_rl["Studio_Name"].isin(sel_studios)].copy()
+
+# Letzter verfügbarer Monat
+aktueller_monat: str = df_view["Monat"].dropna().unique()[-1]
+df_current = df_view[df_view["Monat"] == aktueller_monat]
+
+# Zugehörige Zenloop-Daten
+selected_codes = df_view["Studiokürzel"].unique()
+df_zen_view = (
+    df_zenloop[df_zenloop["Property - studio"].isin(selected_codes)].copy()
+    if not df_zenloop.empty
+    else pd.DataFrame()
+)
+
+# Vorab berechnete KPIs (einmalig, nicht in mehreren Tabs neu berechnen)
+avg_google_rating = df_current["Rating"].mean()
+total_new_reviews  = df_current["NewReviews"].sum()
+nps_total          = calc_nps(df_zen_view)
+sentiment_pct      = calc_positive_sentiment(df_zen_view)
+total_responses    = len(df_zen_view) if not df_zen_view.empty else 0
+
+# ──────────────────────────────────────────────
+# 8. HEADER
+# ──────────────────────────────────────────────
+
 st.title("🏆 Senzera Management Cockpit")
-aktueller_monat = df_final['Monat'].unique()[-1]
-st.info(f"Fokus: {sel_rl} | Zeitraum: {aktueller_monat}")
+st.markdown(
+    f"<span style='color:#8B949E;font-size:14px;'>"
+    f"Fokus: <b>{sel_rl}</b> &nbsp;|&nbsp; Zeitraum: <b>{aktueller_monat}</b> &nbsp;|&nbsp; "
+    f"{len(sel_studios)} Studio(s) aktiv</span>",
+    unsafe_allow_html=True,
+)
+st.divider()
 
-# --- TOP KPIs ---
+# ──────────────────────────────────────────────
+# 9. TOP KPIs
+# ──────────────────────────────────────────────
+
 k1, k2, k3, k4 = st.columns(4)
 
-# 1. Google
-curr_g = df_final[df_final['Monat'] == aktueller_monat]['Rating'].mean()
-k1.metric("🌟 Google Ø-Rating", f"{curr_g:.2f}", f"+{df_final['NewReviews'].sum()} Rezensionen")
+k1.metric(
+    "🌟 Google Ø-Rating",
+    f"{avg_google_rating:.2f} ⭐",
+    delta=f"+{total_new_reviews} neue Rezensionen",
+)
 
-# 2. NPS & Stimmung
-if not df_z_final.empty:
-    n_tot = len(df_z_final)
-    n_prom = len(df_z_final[df_z_final['score_type'] == 'promoter'])
-    n_detr = len(df_z_final[df_z_final['score_type'] == 'detractor'])
-    nps_val = ((n_prom - n_detr) / n_tot) * 100
-    k2.metric("💙 Zenloop NPS", f"{nps_val:.0f}")
-    
-    comments_only = df_z_final.dropna(subset=['comment'])
-    if not comments_only.empty:
-        pos_sent = (len(comments_only[comments_only['sentiment'] == 'positive']) / len(comments_only)) * 100
-        k3.metric("😊 Stimmung Feedback", f"{pos_sent:.0f}%", help="Nur Kunden mit Textkommentar")
-    k4.metric("📝 Antworten", f"{n_tot}")
+if nps_total is not None:
+    k2.metric(
+        "💙 Zenloop NPS",
+        f"{nps_total:.0f}",
+        delta="Promoter − Detraktoren" if nps_total >= 0 else "Negativ – Handlungsbedarf",
+        delta_color="normal" if nps_total >= 0 else "inverse",
+    )
+else:
+    k2.metric("💙 Zenloop NPS", "Keine Daten")
 
-# --- 🚨 ALARM ZONE ---
-crit = df_final[(df_final['Monat'] == aktueller_monat) & (df_final['Rating'] < 4.2)]
-if not crit.empty:
-    st.error(f"🚨 **HANDLUNGSBEDARF:** {len(crit)} Studio(s) unter 4,2 Sternen")
-    cols = st.columns(len(crit) if len(crit) < 4 else 4)
-    for i, (_, row) in enumerate(crit.iterrows()):
-        with cols[i % 4]:
-            st.warning(f"**{row['Studiokürzel']}** ({row['Rating']} ⭐)")
+if sentiment_pct is not None:
+    k3.metric(
+        "😊 Positive Stimmung",
+        f"{sentiment_pct:.0f}%",
+        help="Anteil positiver Kommentare (nur Einträge mit Text)",
+    )
+else:
+    k3.metric("😊 Positive Stimmung", "Keine Daten")
+
+k4.metric("📝 Zenloop Antworten", f"{total_responses:,}".replace(",", "."))
+
+# ──────────────────────────────────────────────
+# 10. ALARM-ZONE
+# ──────────────────────────────────────────────
+
+critical_studios = df_current[df_current["Rating"] < RATING_CRITICAL]
+
+if not critical_studios.empty:
+    count = len(critical_studios)
+    st.error(
+        f"🚨 **HANDLUNGSBEDARF:** {count} Studio{'s' if count > 1 else ''} "
+        f"unter {RATING_CRITICAL} Sternen"
+    )
+    alarm_cols = st.columns(min(count, 4))
+    for idx, (_, row) in enumerate(critical_studios.iterrows()):
+        with alarm_cols[idx % 4]:
+            st.warning(
+                f"**{row['Studiokürzel']}** – {row['Stadt']}\n\n"
+                f"{row['Rating']:.2f} ⭐ | {row['NewReviews']} Rezensionen"
+            )
+else:
+    st.success("✅ Alle Studios im grünen Bereich.")
 
 st.divider()
 
-# --- ANALYSE TABS ---
-tab1, tab2, tab3 = st.tabs(["📊 PERFORMANCE & TRENDS", "💙 ZENLOOP DEEP-DIVE", "📝 MANAGEMENT REPORT"])
+# ──────────────────────────────────────────────
+# 11. ANALYSE-TABS
+# ──────────────────────────────────────────────
 
+tab1, tab2, tab3 = st.tabs(
+    ["📊 Performance & Trends", "💙 Zenloop Deep-Dive", "📝 Management-Bericht"]
+)
+
+# ── TAB 1: Performance & Trends ────────────────
 with tab1:
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("Google Ranking (Top 10)")
-        fig = px.bar(df_final[df_final['Monat'] == aktueller_monat].sort_values('Rating'), x='Rating', y='Studiokürzel', orientation='h', color='Rating', color_continuous_scale='RdYlGn', range_x=[1, 5])
-        st.plotly_chart(fig, use_container_width=True)
-    with c2:
-        st.subheader("Entwicklungs-Trend")
-        trend = df_final.groupby('Monat', sort=False)['Rating'].mean().reset_index()
-        fig_t = px.line(trend, x='Monat', y='Rating', markers=True)
-        fig_t.update_traces(line_color=COLOR_PINK, line_width=4)
-        st.plotly_chart(fig_t, use_container_width=True)
+    col_left, col_right = st.columns(2)
 
+    with col_left:
+        st.subheader("Google Ranking – aktueller Monat")
+        df_ranked = df_current.sort_values("Rating", ascending=True)
+        fig_rank = px.bar(
+            df_ranked,
+            x="Rating",
+            y="Studiokürzel",
+            orientation="h",
+            color="Rating",
+            color_continuous_scale="RdYlGn",
+            range_x=[3.5, 5.0],
+            text="Rating",
+            labels={"Rating": "Ø-Bewertung", "Studiokürzel": "Studio"},
+        )
+        fig_rank.update_traces(
+            texttemplate="%{text:.2f}",
+            textposition="outside",
+        )
+        fig_rank.update_layout(
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font_color="#C9D1D9",
+            coloraxis_showscale=False,
+            xaxis=dict(gridcolor="#30363D"),
+        )
+        # Kritische Linie einzeichnen
+        fig_rank.add_vline(
+            x=RATING_CRITICAL,
+            line_dash="dash",
+            line_color=C_DETRACTOR,
+            annotation_text=f"Kritisch ({RATING_CRITICAL})",
+            annotation_font_color=C_DETRACTOR,
+        )
+        st.plotly_chart(fig_rank, use_container_width=True)
+
+    with col_right:
+        st.subheader("Entwicklungs-Trend (Ø alle Studios)")
+        trend = (
+            df_view.groupby("Monat", sort=False)["Rating"]
+            .mean()
+            .reset_index()
+            .rename(columns={"Rating": "Ø Rating"})
+        )
+        fig_trend = px.line(
+            trend,
+            x="Monat",
+            y="Ø Rating",
+            markers=True,
+            labels={"Ø Rating": "Durchschnitt"},
+        )
+        fig_trend.update_traces(
+            line_color=C_PINK,
+            line_width=3,
+            marker=dict(size=8, color=C_PINK),
+        )
+        fig_trend.update_layout(
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font_color="#C9D1D9",
+            yaxis=dict(range=[3.5, 5.0], gridcolor="#30363D"),
+            xaxis=dict(gridcolor="#30363D"),
+        )
+        fig_trend.add_hline(
+            y=RATING_CRITICAL,
+            line_dash="dash",
+            line_color=C_DETRACTOR,
+            opacity=0.5,
+        )
+        st.plotly_chart(fig_trend, use_container_width=True)
+
+    # Detailtabelle
+    st.subheader("Studio-Übersicht")
+    display_cols = [c for c in ["Studio_Name", "Rating", "NewReviews", "Regionalleitung"] if c in df_current.columns]
+    df_display = df_current[display_cols].sort_values("Rating", ascending=False).reset_index(drop=True)
+    df_display.columns = [c.replace("_", " ") for c in df_display.columns]
+    st.dataframe(
+        df_display,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+# ── TAB 2: Zenloop Deep-Dive ───────────────────
 with tab2:
-    if df_z_final.empty:
-        st.warning("Keine Zenloop Daten gefunden.")
+    if df_zen_view.empty:
+        st.warning("⚠️ Keine Zenloop-Daten gefunden. Bitte 'Zenloop_Antworten.csv' bereitstellen.")
     else:
-        # Deep Dive Selektor
+        # ── Studio-Selektor
         st.subheader("🎯 Studio-Check")
-        sel_s = st.selectbox("Details für welches Studio?", selected_codes)
-        sd = df_z_final[df_z_final['Property - studio'] == sel_s]
-        
+        sel_studio_code = st.selectbox(
+            "Detailanalyse für Studio:",
+            options=sorted(selected_codes),
+        )
+        df_studio = df_zen_view[df_zen_view["Property - studio"] == sel_studio_code]
+
+        studio_nps = calc_nps(df_studio)
+        studio_sentiment = calc_positive_sentiment(df_studio)
+
         sc1, sc2, sc3 = st.columns([1, 1, 2])
+
         with sc1:
-            s_nps = ((len(sd[sd['score_type']=='promoter']) - len(sd[sd['score_type']=='detractor'])) / len(sd)) * 100 if not sd.empty else 0
-            st.metric(f"NPS {sel_s}", f"{s_nps:.0f}")
+            if studio_nps is not None:
+                st.metric(
+                    f"NPS {sel_studio_code}",
+                    f"{studio_nps:.0f}",
+                    delta="positiv" if studio_nps >= 0 else "negativ",
+                    delta_color="normal" if studio_nps >= 0 else "inverse",
+                )
+            else:
+                st.metric(f"NPS {sel_studio_code}", "–")
+
+            if studio_sentiment is not None:
+                st.metric("Stimmung", f"{studio_sentiment:.0f}%")
+
         with sc2:
-            st.write("**Top Themen:**")
-            if 'labels' in sd.columns:
-                labels = sd['labels'].str.split(';').explode().str.strip().value_counts().head(3)
-                for l, c in labels.items(): st.write(f"- {l}")
+            st.markdown("**Top Themen:**")
+            if "labels" in df_studio.columns:
+                top_labels = (
+                    df_studio["labels"]
+                    .dropna()
+                    .str.split(";")
+                    .explode()
+                    .str.strip()
+                    .value_counts()
+                    .head(5)
+                )
+                for label, count in top_labels.items():
+                    st.markdown(f"- **{label}** ({count}×)")
+            else:
+                st.caption("Keine Label-Spalte vorhanden.")
+
         with sc3:
-            st.write("**Letzte Kommentare:**")
-            st.dataframe(sd[['score', 'comment']].dropna().head(3), use_container_width=True, hide_index=True)
+            st.markdown("**Letzte Kommentare:**")
+            if "comment" in df_studio.columns:
+                latest_comments = (
+                    df_studio[["score", "comment"]]
+                    .dropna(subset=["comment"])
+                    .head(TOP_COMMENTS)
+                )
+                st.dataframe(latest_comments, use_container_width=True, hide_index=True)
+            else:
+                st.caption("Keine Kommentar-Spalte vorhanden.")
 
         st.divider()
-        st.subheader("Übergreifende Themen")
-        col_z1, col_z2 = st.columns(2)
-        with col_z1:
-            if 'labels' in df_z_final.columns:
-                l_series = df_z_final['labels'].str.split(';').explode().str.strip().value_counts().head(10).reset_index()
-                fig_l = px.bar(l_series, x='count', y='labels', orientation='h', color_discrete_sequence=[COLOR_BLUE])
-                st.plotly_chart(fig_l, use_container_width=True)
-        with col_z2:
-            if 'Property - product_segment' in df_z_final.columns:
-                seg_nps = []
-                for seg in df_z_final['Property - product_segment'].dropna().unique():
-                    d = df_z_final[df_z_final['Property - product_segment'] == seg]
-                    n = ((len(d[d['score_type']=='promoter']) - len(d[d['score_type']=='detractor'])) / len(d)) * 100
-                    seg_nps.append({'Behandlung': seg, 'NPS': n})
-                st.plotly_chart(px.bar(pd.DataFrame(seg_nps), x='Behandlung', y='NPS', color='NPS', color_continuous_scale='Viridis'), use_container_width=True)
 
+        # ── Übergreifende Analyse
+        st.subheader("Übergreifende Analyse")
+        zcol1, zcol2 = st.columns(2)
+
+        with zcol1:
+            st.markdown("**Häufigste Themen (alle Studios)**")
+            if "labels" in df_zen_view.columns:
+                label_counts = (
+                    df_zen_view["labels"]
+                    .dropna()
+                    .str.split(";")
+                    .explode()
+                    .str.strip()
+                    .value_counts()
+                    .head(TOP_LABELS)
+                    .reset_index()
+                    .rename(columns={"index": "Thema", "labels": "Anzahl"})
+                )
+                fig_labels = px.bar(
+                    label_counts,
+                    x="count",
+                    y="labels",
+                    orientation="h",
+                    color_discrete_sequence=[C_BLUE],
+                    labels={"count": "Nennungen", "labels": "Thema"},
+                )
+                fig_labels.update_layout(
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    font_color="#C9D1D9",
+                    xaxis=dict(gridcolor="#30363D"),
+                    yaxis=dict(categoryorder="total ascending"),
+                )
+                st.plotly_chart(fig_labels, use_container_width=True)
+            else:
+                st.caption("Keine Label-Daten verfügbar.")
+
+        with zcol2:
+            st.markdown("**NPS nach Behandlungsart**")
+            seg_col = "Property - product_segment"
+            if seg_col in df_zen_view.columns:
+                seg_nps_list = []
+                for segment in df_zen_view[seg_col].dropna().unique():
+                    df_seg = df_zen_view[df_zen_view[seg_col] == segment]
+                    nps_seg = calc_nps(df_seg)
+                    if nps_seg is not None:
+                        seg_nps_list.append({"Behandlung": segment, "NPS": nps_seg})
+
+                if seg_nps_list:
+                    df_seg_nps = pd.DataFrame(seg_nps_list).sort_values("NPS", ascending=False)
+                    fig_seg = px.bar(
+                        df_seg_nps,
+                        x="Behandlung",
+                        y="NPS",
+                        color="NPS",
+                        color_continuous_scale="RdYlGn",
+                        range_color=[-100, 100],
+                        text="NPS",
+                    )
+                    fig_seg.update_traces(texttemplate="%{text:.0f}", textposition="outside")
+                    fig_seg.update_layout(
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        font_color="#C9D1D9",
+                        coloraxis_showscale=False,
+                        yaxis=dict(gridcolor="#30363D"),
+                    )
+                    fig_seg.add_hline(y=0, line_color="#30363D")
+                    st.plotly_chart(fig_seg, use_container_width=True)
+            else:
+                st.caption("Keine Segment-Daten verfügbar.")
+
+        # ── NPS Promoter / Passive / Detractor Donut
+        if "score_type" in df_zen_view.columns:
+            st.subheader("NPS-Zusammensetzung")
+            type_counts = df_zen_view["score_type"].value_counts().reset_index()
+            type_counts.columns = ["Typ", "Anzahl"]
+            color_map = {
+                "promoter":  C_PROMOTER,
+                "passive":   C_PASSIVE,
+                "detractor": C_DETRACTOR,
+            }
+            fig_donut = px.pie(
+                type_counts,
+                values="Anzahl",
+                names="Typ",
+                hole=0.55,
+                color="Typ",
+                color_discrete_map=color_map,
+            )
+            fig_donut.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                font_color="#C9D1D9",
+                legend=dict(orientation="h", yanchor="bottom", y=-0.2),
+            )
+            if nps_total is not None:
+                fig_donut.add_annotation(
+                    text=f"NPS<br><b>{nps_total:.0f}</b>",
+                    x=0.5, y=0.5,
+                    font_size=18,
+                    font_color="#E6EDF3",
+                    showarrow=False,
+                )
+            # Donut in schmaler Spalte zentrieren
+            _, donut_col, _ = st.columns([1, 2, 1])
+            with donut_col:
+                st.plotly_chart(fig_donut, use_container_width=True)
+
+# ── TAB 3: Management-Bericht ──────────────────
 with tab3:
-    st.subheader("Management-Bericht (Copy & Paste)")
-    rep = f"BERICHT {sel_rl} | STAND {aktueller_monat}\n" + "="*35 + "\n"
-    rep += f"Google Sterne: {curr_g:.2f} ⭐\n"
-    if not df_z_final.empty:
-        rep += f"Zenloop NPS: {nps_total:.0f} 💙 | Stimmung: {pos_sent:.0f}% pos.\n"
-    
-    rep += "\nSTUDIO STATUS:\n"
-    for s_code in selected_codes:
-        g_val = df_final[(df_final['Studiokürzel'] == s_code) & (df_final['Monat'] == aktueller_monat)]['Rating'].values[0]
-        rep += f"- {s_code}: {g_val} Sterne"
-        if g_val < 4.2: rep += " -> 🚨 KRITISCH"
-        rep += "\n"
-    
-    st.text_area("Berichtstext:", rep, height=350)
-    
-# --- EXPORT ---
+    st.subheader("Management-Bericht – Copy & Paste")
+    st.caption("Automatisch generierter Statusbericht für deine Region.")
+
+    # Bericht zusammenstellen
+    sep = "=" * 40
+    lines = [
+        f"SENZERA MANAGEMENT-BERICHT",
+        f"Region: {sel_rl}  |  Stand: {aktueller_monat}",
+        sep,
+        "",
+        "KENNZAHLEN ÜBERBLICK",
+        f"  Google Ø-Rating    : {avg_google_rating:.2f} ⭐  ({total_new_reviews} neue Rezensionen)",
+    ]
+
+    if nps_total is not None:
+        lines.append(f"  Zenloop NPS        : {nps_total:.0f}")
+    if sentiment_pct is not None:
+        lines.append(f"  Positive Stimmung  : {sentiment_pct:.0f}%  (aus {total_responses} Antworten)")
+
+    lines += ["", sep, "", "STUDIO STATUS:"]
+
+    for code in sorted(selected_codes):
+        row_data = df_current[df_current["Studiokürzel"] == code]
+        if row_data.empty:
+            continue
+        rating = row_data["Rating"].values[0]
+        reviews = row_data["NewReviews"].values[0]
+        status = studio_status_emoji(rating)
+        lines.append(
+            f"  {status}  {code:<6} {rating:.2f} ⭐  ({reviews} Rez.)  "
+            + ("→ KRITISCH – Maßnahmen erforderlich!" if rating < RATING_CRITICAL else "")
+        )
+
+    if not critical_studios.empty:
+        lines += [
+            "",
+            sep,
+            "",
+            "HANDLUNGSBEDARF:",
+        ]
+        for _, row in critical_studios.iterrows():
+            lines.append(
+                f"  🚨 {row['Studiokürzel']} ({row['Stadt']}): "
+                f"{row['Rating']:.2f} ⭐ – unter Schwelle von {RATING_CRITICAL}"
+            )
+
+    lines += ["", sep, f"Erstellt: {pd.Timestamp.now().strftime('%d.%m.%Y %H:%M')}"]
+
+    report_text = "\n".join(lines)
+    st.text_area("Berichtstext:", value=report_text, height=420)
+
+    # Bericht als .txt herunterladen
+    st.download_button(
+        label="📄 Bericht als .txt herunterladen",
+        data=report_text.encode("utf-8"),
+        file_name=f"Senzera_Bericht_{sel_rl}_{aktueller_monat}.txt",
+        mime="text/plain",
+    )
+
+# ──────────────────────────────────────────────
+# 12. EXPORT
+# ──────────────────────────────────────────────
+
 st.divider()
-csv = df_final.to_csv(index=False, sep=';').encode('utf-8-sig')
-st.download_button("📥 Google-Daten als Excel laden", csv, f"Senzera_Export_{aktueller_monat}.csv")
+export_col1, export_col2 = st.columns(2)
+
+with export_col1:
+    csv_data = df_view.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
+    st.download_button(
+        label="📥 Google-Daten als CSV exportieren",
+        data=csv_data,
+        file_name=f"Senzera_GoogleDaten_{aktueller_monat}.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+
+with export_col2:
+    if not df_zen_view.empty:
+        zen_csv = df_zen_view.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
+        st.download_button(
+            label="📥 Zenloop-Daten als CSV exportieren",
+            data=zen_csv,
+            file_name=f"Senzera_Zenloop_{aktueller_monat}.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    else:
+        st.button("📥 Zenloop-Export (keine Daten)", disabled=True, use_container_width=True)
+
+st.caption("Senzera Performance Hub · Powered by Streamlit · Daten werden lokal verarbeitet.")
