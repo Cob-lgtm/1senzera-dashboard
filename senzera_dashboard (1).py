@@ -1368,7 +1368,9 @@ with tab2:
                     font=dict(size=12, color=T["text_muted"], family="DM Sans"),
                 )
             fig_d.update_layout(
-                **plotly_base(),
+                plot_bgcolor=PBG, paper_bgcolor=PBG,
+                font=dict(color=PFG, family="DM Sans", size=12),
+                showlegend=True,
                 legend=dict(orientation="h", yanchor="bottom", y=-0.18,
                             font=dict(size=12), itemgap=24),
                 margin=dict(t=10, b=10, l=10, r=10),
@@ -1892,7 +1894,8 @@ with tab4:
                 ))
 
             fig_trend.update_layout(
-                **plotly_base(),
+                plot_bgcolor=PBG, paper_bgcolor=PBG,
+                font=dict(color=PFG, family="DM Sans", size=12),
                 showlegend=True,
                 legend=dict(orientation="h", yanchor="bottom", y=1.02,
                             font=dict(size=12), itemgap=16),
