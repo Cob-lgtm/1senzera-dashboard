@@ -194,9 +194,12 @@ div, span, p, label, input, select, textarea, button {{
     border: none !important;
     box-shadow: none !important;
 }}
-[data-testid="stToolbar"], [data-testid="stDecoration"] {{
-    display: none !important;
-}}
+/* Toolbar: nur Deploy-Button und Menu ausblenden, NICHT den Sidebar-Toggle */
+[data-testid="stToolbar"] [data-testid="baseButton-header"] {{ display: none !important; }}
+[data-testid="stDecoration"] {{ display: none !important; }}
+/* Streamlit-Branding im Footer ausblenden */
+footer {{ visibility: hidden !important; }}
+footer::before {{ visibility: hidden !important; }}
 
 /* ── SIDEBAR ───────────────────────────────────── */
 [data-testid="stSidebar"] {{
@@ -762,10 +765,10 @@ def label_bar(label: str, cnt: int, max_cnt: int, color: str = C_ORANGE, bg: str
 
 
 def plotly_base() -> dict:
+    """Gemeinsame Plotly-Layout-Basis. margin NICHT enthalten – immer individuell setzen."""
     return dict(
         plot_bgcolor=PBG, paper_bgcolor=PBG,
         font=dict(color=PFG, family="DM Sans", size=12),
-        margin=dict(l=4, r=4, t=8, b=8),
         showlegend=False,
     )
 
