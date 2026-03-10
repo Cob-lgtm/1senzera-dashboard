@@ -1,34 +1,22 @@
 """
-Senzera Performance Hub – Management Cockpit v3
-================================================
-Vertriebssteuerungs-Dashboard für Regionalleiterinnen.
-
-Voraussetzungen:
-    pip install streamlit pandas plotly
-
-Datenquellen:
-    - Senzera_Dashboard_Data.csv   (Google-Bewertungen pro Studio & Monat)
-    - Zenloop_Antworten.csv        (NPS-Umfragen mit Kommentaren & Labels)
-
-Starten:
-    streamlit run senzera_dashboard.py
+Senzera Performance Hub – v4 Ultra Premium
+============================================
+Starten:  streamlit run senzera_dashboard.py
+Dateien:  Senzera_Dashboard_Data.csv  +  Zenloop_Antworten.csv
 """
 
 from __future__ import annotations
-
 import os
 from datetime import datetime
 from typing import Optional
 
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-# ══════════════════════════════════════════════
-# 1. KONFIGURATION & KONSTANTEN
-# ══════════════════════════════════════════════
-
+# ══════════════════════════════════════════════════════════════════
+# 1 · PAGE CONFIG
+# ══════════════════════════════════════════════════════════════════
 st.set_page_config(
     page_title="Senzera Performance Hub",
     page_icon="🌸",
@@ -36,293 +24,597 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Senzera CI-Farben (aus Corporate Design Manual) ──────────────
-C_ORANGE       = "#E8620A"   # Senzera Orange – Primärfarbe (Pantone 165C)
-C_ORANGE_LIGHT = "#F47A2A"
-C_BLACK        = "#1C1C1A"   # Senzera Black
-C_SAND         = "#CFC8B8"   # Sekundär: Sand
-C_STONE        = "#A8B9BC"   # Sekundär: Stone
-C_SKIN         = "#F0D0C4"   # Sekundär: Skin
-C_CREAM        = "#FAF8F5"   # Tertiär: Cream
-C_HONEY        = "#D4B86A"   # Tertiär: Honey
-C_MINT         = "#A8C4A8"   # Tertiär: Mint
-C_LILAC        = "#C8B4C4"   # Tertiär: Lilac
+# ══════════════════════════════════════════════════════════════════
+# 2 · SENZERA CI
+# ══════════════════════════════════════════════════════════════════
+C_ORANGE      = "#E8620A"
+C_ORANGE_LT   = "#F47A2A"
+C_ORANGE_PALE = "#FEF2EB"
+C_BLACK       = "#1A1814"
+C_SAND        = "#CFC8B8"
+C_STONE       = "#8FA4A8"
+C_SKIN        = "#F0D0C4"
+C_CREAM       = "#FDFAF6"
+C_HONEY       = "#C8A84A"
+C_HONEY_PALE  = "#FBF5E3"
+C_MINT        = "#6EA87E"
+C_MINT_PALE   = "#EAF4ED"
+C_LILAC       = "#B8A0BC"
+C_GREEN       = "#3A8A50"
+C_RED         = "#C83010"
+C_RED_PALE    = "#FDEEE8"
 
-# Chart-Farben (CI-konform)
-C_CHART_GREEN = "#5A9A6A"
-C_CHART_RED   = "#D44020"
-
-# Schwellwerte
-RATING_CRITICAL = 4.2
-RATING_GOOD     = 4.5
-TOP_LABELS      = 10
-TOP_COMMENTS    = 5
-
-# Pflicht-Spalten
+RATING_MIN  = 4.2
+RATING_GOOD = 4.5
 REQ_GOOGLE  = {"Studiokürzel", "Stadt", "Regionalleitung", "Rating"}
-REQ_ZENLOOP = {"Property - studio", "score_type", "score"}
+REQ_ZEN     = {"Property - studio", "score_type", "score"}
 
-
-# ══════════════════════════════════════════════
-# 2. THEME-SYSTEM & CSS
-# ══════════════════════════════════════════════
-
+# ══════════════════════════════════════════════════════════════════
+# 3 · THEME DEFINITIONEN
+# ══════════════════════════════════════════════════════════════════
 THEMES = {
     "☀️ Hell": {
-        "bg":          C_CREAM,
-        "sidebar_bg":  "#F2EAE4",
-        "sidebar_br":  "#E0CEBC",
-        "card_bg":     "#FFFFFF",
-        "card_br":     "#EDE0D4",
-        "text_h":      C_BLACK,
-        "text_muted":  "#786858",
-        "text_body":   "#3C3428",
-        "grid":        "#E8E0D8",
-        "divider":     "#E0CEBC",
-        "tab_active":  C_BLACK,
-        "tab_border":  C_ORANGE,
-        "textarea_bg": "#FFFFFF",
-        "textarea_fg": "#3C3428",
-        "textarea_br": "#D4C0A8",
-        "plot_bg":     "rgba(0,0,0,0)",
-        "font":        "#3C3428",
-        "success_bg":  "#E8F2EC",
-        "success_br":  C_CHART_GREEN,
-        "warn_bg":     "#FEF5E0",
-        "warn_br":     C_HONEY,
-        "error_bg":    "#FDEEE8",
-        "error_br":    C_CHART_RED,
+        "mode":          "light",
+        # Flächen
+        "app_bg":        "#F7F4F0",
+        "main_bg":       "#F7F4F0",
+        "sidebar_bg":    "#FFFFFF",
+        "card_bg":       "#FFFFFF",
+        "card_bg2":      "#FDFAF6",
+        "input_bg":      "#FFFFFF",
+        "table_head_bg": "#F9F6F2",
+        "table_row_bg":  "#FFFFFF",
+        "table_row_alt": "#FDFAF6",
+        "dropdown_bg":   "#FFFFFF",
+        "dropdown_item_hover": "#FEF2EB",
+        # Borders
+        "sidebar_border":  "#EDE5D8",
+        "card_border":     "#EDE5D8",
+        "input_border":    "#DDD5C8",
+        "divider":         "#EDE5D8",
+        "table_border":    "#EDE5D8",
+        # Text
+        "text_h":          "#1A1814",
+        "text_body":       "#3C342A",
+        "text_second":     "#6B5A4A",
+        "text_muted":      "#9A8878",
+        "text_label":      "#7A6858",
+        "text_input":      "#1A1814",
+        "text_table":      "#2A221A",
+        # Shadows
+        "card_shadow":     "0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05)",
+        "card_shadow_h":   "0 4px 24px rgba(232,98,10,0.13), 0 1px 4px rgba(0,0,0,0.06)",
+        "input_shadow_f":  "0 0 0 3px rgba(232,98,10,0.10)",
+        "sidebar_shadow":  "2px 0 12px rgba(0,0,0,0.04)",
+        # Status
+        "ok_bg":    "#EAF5EE", "ok_br":   C_GREEN,
+        "warn_bg":  "#FBF5E3", "warn_br":  C_HONEY,
+        "err_bg":   "#FDEEE8", "err_br":   C_RED,
+        "info_bg":  "#FEF2EB", "info_br":  C_ORANGE,
+        # Misc
+        "tag_bg":   "#FEF2EB",  "tag_fg":  C_ORANGE,
+        "plot_bg":  "rgba(0,0,0,0)",
+        "plot_font":"#6B5A4A",
+        "plot_grid":"#EDE5D8",
+        "scroll":   "#DDD5C8",
+        "summary_bg":"#FEF2EB",
     },
     "🌙 Dark": {
-        "bg":          "#100E0B",
-        "sidebar_bg":  "#1A1714",
-        "sidebar_br":  "#2C2820",
-        "card_bg":     "#1E1B17",
-        "card_br":     "#2C2820",
-        "text_h":      C_CREAM,
-        "text_muted":  "#A09888",
-        "text_body":   C_SAND,
-        "grid":        "#2C2820",
-        "divider":     "#2C2820",
-        "tab_active":  C_CREAM,
-        "tab_border":  C_ORANGE,
-        "textarea_bg": "#100E0B",
-        "textarea_fg": C_SAND,
-        "textarea_br": "#2C2820",
-        "plot_bg":     "rgba(0,0,0,0)",
-        "font":        C_SAND,
-        "success_bg":  "#182418",
-        "success_br":  C_CHART_GREEN,
-        "warn_bg":     "#2A2010",
-        "warn_br":     C_HONEY,
-        "error_bg":    "#2A1008",
-        "error_br":    C_CHART_RED,
+        "mode":          "dark",
+        "app_bg":        "#100E0B",
+        "main_bg":       "#100E0B",
+        "sidebar_bg":    "#161310",
+        "card_bg":       "#1E1B17",
+        "card_bg2":      "#221F1B",
+        "input_bg":      "#1E1B17",
+        "table_head_bg": "#1A1714",
+        "table_row_bg":  "#1E1B17",
+        "table_row_alt": "#221F1B",
+        "dropdown_bg":   "#1E1B17",
+        "dropdown_item_hover": "rgba(232,98,10,0.12)",
+        "sidebar_border":  "#2C2820",
+        "card_border":     "#2C2820",
+        "input_border":    "#2C2820",
+        "divider":         "#2C2820",
+        "table_border":    "#2C2820",
+        "text_h":          "#FDFAF6",
+        "text_body":       "#C8B8A8",
+        "text_second":     "#A89888",
+        "text_muted":      "#7A6858",
+        "text_label":      "#A89888",
+        "text_input":      "#FDFAF6",
+        "text_table":      "#C8B8A8",
+        "card_shadow":     "0 1px 4px rgba(0,0,0,0.4), 0 4px 20px rgba(0,0,0,0.3)",
+        "card_shadow_h":   "0 4px 28px rgba(232,98,10,0.22)",
+        "input_shadow_f":  "0 0 0 3px rgba(232,98,10,0.15)",
+        "sidebar_shadow":  "2px 0 16px rgba(0,0,0,0.4)",
+        "ok_bg":    "#12201A", "ok_br":   C_MINT,
+        "warn_bg":  "#201A0A", "warn_br":  C_HONEY,
+        "err_bg":   "#201008", "err_br":   C_RED,
+        "info_bg":  "#201408", "info_br":  C_ORANGE,
+        "tag_bg":   "rgba(232,98,10,0.14)", "tag_fg":  C_ORANGE_LT,
+        "plot_bg":  "rgba(0,0,0,0)",
+        "plot_font":"#A89888",
+        "plot_grid":"#2C2820",
+        "scroll":   "#2C2820",
+        "summary_bg":"rgba(232,98,10,0.10)",
     },
 }
 
 if "theme" not in st.session_state:
-    st.session_state["theme"] = "☀️ Hell"
+    st.session_state.theme = "☀️ Hell"
+
+T = THEMES[st.session_state.theme]
 
 
-def apply_theme(t: dict) -> None:
+# ══════════════════════════════════════════════════════════════════
+# 4 · CSS INJECTION
+# ══════════════════════════════════════════════════════════════════
+def inject_css(t: dict) -> None:
+    is_light = t["mode"] == "light"
+    # Checkbox color for multiselect items in dropdown
+    check_color = C_ORANGE
+
     css = f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,400&display=swap');
+<style>
+/* ── FONTS ─────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap');
 
-    html, body, [class*="css"] {{
-        font-family: 'Jost', sans-serif !important;
-    }}
-    [data-testid="stAppViewContainer"] {{
-        background: {t["bg"]} !important;
-    }}
-    [data-testid="stHeader"] {{
-        background: transparent !important;
-    }}
+/* ── GLOBAL RESET ──────────────────────────────── */
+*, *::before, *::after {{ box-sizing: border-box !important; }}
+html, body, [class*="css"], [class*="st-"],
+div, span, p, label, input, select, textarea, button {{
+    font-family: 'DM Sans', sans-serif !important;
+}}
 
-    /* ─ SIDEBAR ─ */
-    [data-testid="stSidebar"] {{
-        background: {t["sidebar_bg"]} !important;
-        border-right: 1px solid {t["sidebar_br"]} !important;
-    }}
-    section[data-testid="stSidebar"] * {{
-        color: {t["text_body"]} !important;
-    }}
-    section[data-testid="stSidebar"] h1,
-    section[data-testid="stSidebar"] h2,
-    section[data-testid="stSidebar"] h3 {{
-        color: {t["text_h"]} !important;
-    }}
+/* ── APP BACKGROUND ────────────────────────────── */
+[data-testid="stAppViewContainer"],
+[data-testid="stAppViewContainer"] > .main,
+.main .block-container {{
+    background: {t["app_bg"]} !important;
+}}
+.main .block-container {{
+    padding-top: 1.5rem !important;
+    padding-bottom: 4rem !important;
+    max-width: 1500px !important;
+}}
+[data-testid="stHeader"] {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}}
+[data-testid="stToolbar"], [data-testid="stDecoration"] {{
+    display: none !important;
+}}
 
-    /* ─ HEADLINES ─ */
-    h1 {{ color: {t["text_h"]} !important; font-weight: 700 !important; letter-spacing: -0.5px; }}
-    h2 {{ color: {t["text_h"]} !important; font-weight: 600 !important; }}
-    h3 {{ color: {t["text_h"]} !important; }}
-    p, label, .stCaption {{ color: {t["text_muted"]} !important; }}
+/* ── SIDEBAR ───────────────────────────────────── */
+[data-testid="stSidebar"] {{
+    background: {t["sidebar_bg"]} !important;
+    border-right: 1px solid {t["sidebar_border"]} !important;
+    box-shadow: {t["sidebar_shadow"]} !important;
+}}
+[data-testid="stSidebar"] > div {{
+    background: {t["sidebar_bg"]} !important;
+}}
+section[data-testid="stSidebar"] * {{
+    color: {t["text_body"]} !important;
+}}
 
-    /* ─ METRIC CARDS ─ */
-    [data-testid="metric-container"] {{
-        background: {t["card_bg"]} !important;
-        border: 1px solid {t["card_br"]} !important;
-        border-radius: 12px !important;
-        padding: 16px 20px !important;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
-        transition: transform 0.15s ease, box-shadow 0.15s ease !important;
-    }}
-    [data-testid="metric-container"]:hover {{
-        transform: translateY(-2px) !important;
-        box-shadow: 0 6px 20px rgba(232,98,10,0.15) !important;
-        border-color: {C_ORANGE} !important;
-    }}
-    [data-testid="metric-container"] label,
-    [data-testid="metric-container"] p {{
-        color: {t["text_muted"]} !important;
-        font-size: 11px !important;
-        letter-spacing: 1px !important;
-        text-transform: uppercase !important;
-    }}
-    [data-testid="metric-container"] [data-testid="stMetricValue"] {{
-        color: {t["text_h"]} !important;
-        font-size: 26px !important;
-        font-weight: 700 !important;
-    }}
-    [data-testid="stMetricDelta"] svg {{ display: none !important; }}
+/* ── TYPOGRAPHY ────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {{ color: {t["text_h"]} !important; }}
+h1 {{
+    font-family: 'Instrument Serif', serif !important;
+    font-weight: 400 !important;
+    font-size: 2.1rem !important;
+    letter-spacing: -0.5px !important;
+    line-height: 1.15 !important;
+}}
+h2 {{
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    letter-spacing: 0.1px !important;
+}}
+p {{ color: {t["text_second"]} !important; }}
+[data-testid="stMarkdownContainer"] p {{ color: {t["text_second"]} !important; }}
+label {{ color: {t["text_label"]} !important; }}
 
-    /* ─ TABS ─ */
-    button[data-baseweb="tab"] {{
-        font-family: 'Jost', sans-serif !important;
-        font-weight: 600 !important;
-        font-size: 12px !important;
-        letter-spacing: 1px !important;
-        text-transform: uppercase !important;
-        color: {t["text_muted"]} !important;
-        padding: 12px 22px !important;
-    }}
-    button[data-baseweb="tab"][aria-selected="true"] {{
-        color: {t["tab_active"]} !important;
-        border-bottom: 2px solid {C_ORANGE} !important;
-    }}
+/* ── METRIC CARDS ──────────────────────────────── */
+[data-testid="metric-container"] {{
+    background: {t["card_bg"]} !important;
+    border: 1px solid {t["card_border"]} !important;
+    border-radius: 18px !important;
+    padding: 20px 22px 18px !important;
+    box-shadow: {t["card_shadow"]} !important;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease !important;
+    position: relative !important;
+    overflow: hidden !important;
+}}
+[data-testid="metric-container"]::before {{
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, {C_ORANGE}, {C_ORANGE_LT});
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    border-radius: 18px 18px 0 0;
+}}
+[data-testid="metric-container"]:hover {{
+    box-shadow: {t["card_shadow_h"]} !important;
+    border-color: {C_ORANGE} !important;
+    transform: translateY(-2px) !important;
+}}
+[data-testid="metric-container"]:hover::before {{
+    opacity: 1;
+}}
+[data-testid="metric-container"] label,
+[data-testid="metric-container"] [data-testid="stMetricLabel"] p {{
+    color: {t["text_muted"]} !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    letter-spacing: 1.4px !important;
+    text-transform: uppercase !important;
+}}
+[data-testid="metric-container"] [data-testid="stMetricValue"] {{
+    color: {t["text_h"]} !important;
+    font-size: 1.75rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.5px !important;
+    line-height: 1.1 !important;
+}}
+[data-testid="stMetricDelta"] {{
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    padding: 2px 9px !important;
+    border-radius: 100px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    background: {t["tag_bg"]} !important;
+    color: {t["tag_fg"]} !important;
+}}
+[data-testid="stMetricDelta"] svg {{ display: none !important; }}
 
-    /* ─ DIVIDER ─ */
-    hr {{
-        border: none !important;
-        border-top: 1px solid {t["divider"]} !important;
-        margin: 1.2rem 0 !important;
-    }}
+/* ── TABS ──────────────────────────────────────── */
+[data-testid="stTabs"] > div:first-child {{
+    border-bottom: 1.5px solid {t["divider"]} !important;
+    gap: 0 !important;
+    padding-bottom: 0 !important;
+}}
+button[data-baseweb="tab"] {{
+    font-weight: 600 !important;
+    font-size: 11.5px !important;
+    letter-spacing: 0.9px !important;
+    text-transform: uppercase !important;
+    color: {t["text_muted"]} !important;
+    padding: 14px 22px !important;
+    background: transparent !important;
+    border: none !important;
+    transition: color 0.15s ease, background 0.15s ease !important;
+    border-radius: 8px 8px 0 0 !important;
+}}
+button[data-baseweb="tab"]:hover {{
+    color: {t["text_h"]} !important;
+    background: {t["tag_bg"]} !important;
+}}
+button[data-baseweb="tab"][aria-selected="true"] {{
+    color: {C_ORANGE} !important;
+    border-bottom: 2.5px solid {C_ORANGE} !important;
+}}
+[data-baseweb="tab-panel"] {{
+    padding-top: 24px !important;
+    background: transparent !important;
+}}
 
-    /* ─ DATAFRAME ─ */
-    [data-testid="stDataFrameResizable"] {{
-        background: {t["card_bg"]} !important;
-        border: 1px solid {t["card_br"]} !important;
-        border-radius: 8px !important;
-    }}
+/* ── DIVIDER ───────────────────────────────────── */
+hr {{
+    border: none !important;
+    border-top: 1px solid {t["divider"]} !important;
+    margin: 1.5rem 0 !important;
+}}
 
-    /* ─ TEXTAREA ─ */
-    textarea {{
-        font-family: 'Courier New', monospace !important;
-        font-size: 12.5px !important;
-        background: {t["textarea_bg"]} !important;
-        color: {t["textarea_fg"]} !important;
-        border: 1px solid {t["textarea_br"]} !important;
-        border-radius: 8px !important;
-    }}
+/* ── BUTTONS ───────────────────────────────────── */
+[data-testid="stDownloadButton"] button,
+[data-testid="stButton"] button {{
+    background: {C_ORANGE} !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 100px !important;
+    font-weight: 500 !important;
+    font-size: 13px !important;
+    letter-spacing: 0.2px !important;
+    padding: 9px 22px !important;
+    box-shadow: 0 2px 10px rgba(232,98,10,0.3) !important;
+    transition: all 0.2s ease !important;
+}}
+[data-testid="stDownloadButton"] button:hover,
+[data-testid="stButton"] button:hover {{
+    background: {C_ORANGE_LT} !important;
+    box-shadow: 0 4px 18px rgba(232,98,10,0.4) !important;
+    transform: translateY(-1px) !important;
+    color: #FFFFFF !important;
+}}
+[data-testid="stButton"] button:disabled {{
+    background: {t["card_border"]} !important;
+    color: {t["text_muted"]} !important;
+    box-shadow: none !important;
+    transform: none !important;
+}}
 
-    /* ─ BUTTONS ─ */
-    [data-testid="stDownloadButton"] button,
-    [data-testid="stButton"] button {{
-        background: {C_ORANGE} !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 100px !important;
-        font-family: 'Jost', sans-serif !important;
-        font-weight: 500 !important;
-        font-size: 13px !important;
-        letter-spacing: 0.3px !important;
-        padding: 10px 22px !important;
-        transition: background 0.2s ease !important;
-    }}
-    [data-testid="stDownloadButton"] button:hover,
-    [data-testid="stButton"] button:hover {{
-        background: {C_ORANGE_LIGHT} !important;
-    }}
-    [data-testid="stButton"] button:disabled {{
-        background: {t["card_br"]} !important;
-        color: {t["text_muted"]} !important;
-    }}
+/* ── SELECT / DROPDOWN ─────────────────────────── */
+[data-baseweb="select"] > div {{
+    background: {t["input_bg"]} !important;
+    border: 1.5px solid {t["input_border"]} !important;
+    border-radius: 11px !important;
+    color: {t["text_input"]} !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+    min-height: 42px !important;
+}}
+[data-baseweb="select"] > div:hover {{
+    border-color: {C_ORANGE} !important;
+}}
+[data-baseweb="select"] > div:focus-within {{
+    border-color: {C_ORANGE} !important;
+    box-shadow: {t["input_shadow_f"]} !important;
+}}
+[data-baseweb="select"] span,
+[data-baseweb="select"] div[data-testid="stMarkdownContainer"] p {{
+    color: {t["text_input"]} !important;
+}}
+/* Dropdown list panel */
+[data-baseweb="popover"] > div > div {{
+    background: {t["dropdown_bg"]} !important;
+    border: 1px solid {t["card_border"]} !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06) !important;
+    overflow: hidden !important;
+}}
+li[role="option"] {{
+    background: {t["dropdown_bg"]} !important;
+    color: {t["text_input"]} !important;
+    font-size: 13px !important;
+    padding: 9px 14px !important;
+}}
+li[role="option"]:hover {{
+    background: {t["dropdown_item_hover"]} !important;
+    color: {C_ORANGE} !important;
+}}
+li[role="option"][aria-selected="true"] {{
+    background: {t["dropdown_item_hover"]} !important;
+    color: {C_ORANGE} !important;
+    font-weight: 600 !important;
+}}
+/* Multiselect tags */
+[data-baseweb="tag"] {{
+    background: {t["tag_bg"]} !important;
+    color: {t["tag_fg"]} !important;
+    border-radius: 100px !important;
+    border: 1.5px solid rgba(232,98,10,0.2) !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    padding: 3px 10px 3px 12px !important;
+}}
+[data-baseweb="tag"] span {{ color: {t["tag_fg"]} !important; }}
+[data-baseweb="tag"] button {{ color: {t["tag_fg"]} !important; opacity: 0.7 !important; }}
 
-    /* ─ ALERTS ─ */
-    div[class*="stSuccess"] {{
-        background: {t["success_bg"]} !important;
-        border-left: 4px solid {t["success_br"]} !important;
-        border-radius: 8px !important;
-    }}
-    div[class*="stWarning"] {{
-        background: {t["warn_bg"]} !important;
-        border-left: 4px solid {C_ORANGE} !important;
-        border-radius: 8px !important;
-    }}
-    div[class*="stError"] {{
-        background: {t["error_bg"]} !important;
-        border-left: 4px solid {t["error_br"]} !important;
-        border-radius: 8px !important;
-    }}
+/* ── INPUT FIELDS ──────────────────────────────── */
+input[type="text"], input[type="number"] {{
+    background: {t["input_bg"]} !important;
+    color: {t["text_input"]} !important;
+    border: 1.5px solid {t["input_border"]} !important;
+    border-radius: 11px !important;
+}}
+input:focus {{
+    border-color: {C_ORANGE} !important;
+    box-shadow: {t["input_shadow_f"]} !important;
+}}
 
-    /* ─ SELECT ─ */
-    [data-baseweb="select"] {{
-        border-color: {t["card_br"]} !important;
-        background: {t["card_bg"]} !important;
-        border-radius: 8px !important;
-    }}
-    [data-baseweb="tag"] {{
-        background: rgba(232,98,10,0.12) !important;
-        color: {C_ORANGE} !important;
-        border-radius: 100px !important;
-    }}
+/* ── RADIO ─────────────────────────────────────── */
+[data-testid="stRadio"] > div {{
+    gap: 6px !important;
+    flex-direction: row !important;
+}}
+[data-testid="stRadio"] label {{
+    background: {t["input_bg"]} !important;
+    border: 1.5px solid {t["input_border"]} !important;
+    border-radius: 100px !important;
+    padding: 7px 16px !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: {t["text_body"]} !important;
+    transition: all 0.15s ease !important;
+    margin: 0 !important;
+}}
+[data-testid="stRadio"] label:hover {{
+    border-color: {C_ORANGE} !important;
+    color: {C_ORANGE} !important;
+}}
+[data-testid="stRadio"] label:has(input:checked) {{
+    background: {C_ORANGE} !important;
+    border-color: {C_ORANGE} !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 2px 8px rgba(232,98,10,0.3) !important;
+}}
+[data-testid="stRadio"] label:has(input:checked) p,
+[data-testid="stRadio"] label:has(input:checked) span {{
+    color: #FFFFFF !important;
+}}
+[data-testid="stRadio"] label p,
+[data-testid="stRadio"] label span {{
+    color: inherit !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+}}
+[data-testid="stRadio"] input {{ display: none !important; }}
 
-    /* ─ SCROLLBAR ─ */
-    ::-webkit-scrollbar {{ width: 6px; height: 6px; }}
-    ::-webkit-scrollbar-track {{ background: {t["bg"]}; }}
-    ::-webkit-scrollbar-thumb {{ background: {C_SAND}; border-radius: 3px; }}
-    ::-webkit-scrollbar-thumb:hover {{ background: {C_ORANGE}; }}
+/* ── INPUT LABELS ──────────────────────────────── */
+[data-testid="stSelectbox"] > label,
+[data-testid="stMultiSelect"] > label,
+[data-testid="stRadio"] > label,
+[data-testid="stNumberInput"] > label {{
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    letter-spacing: 1.2px !important;
+    text-transform: uppercase !important;
+    color: {t["text_muted"]} !important;
+    margin-bottom: 6px !important;
+    display: block !important;
+}}
 
-    /* ─ CAPTION ─ */
-    .stCaption, [data-testid="stCaptionContainer"] {{
-        font-size: 11px !important;
-        color: {t["text_muted"]} !important;
-        letter-spacing: 0.3px !important;
-    }}
-    </style>
-    """
+/* ── DATAFRAME / TABELLE ───────────────────────── */
+[data-testid="stDataFrameResizable"],
+[data-testid="stDataFrame"] > div {{
+    background: {t["card_bg"]} !important;
+    border: 1px solid {t["card_border"]} !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    box-shadow: {t["card_shadow"]} !important;
+}}
+/* Column headers */
+[data-testid="glideDataEditor"] .gdg-header-cell,
+[data-testid="stDataFrameResizable"] th,
+.dvn-scroller thead th {{
+    background: {t["table_head_bg"]} !important;
+    color: {t["text_muted"]} !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 1px !important;
+    text-transform: uppercase !important;
+    border-bottom: 1px solid {t["table_border"]} !important;
+    padding: 11px 14px !important;
+}}
+/* Rows */
+[data-testid="stDataFrameResizable"] td,
+.dvn-scroller tbody td {{
+    background: {t["table_row_bg"]} !important;
+    color: {t["text_table"]} !important;
+    font-size: 13px !important;
+    border-bottom: 1px solid {t["table_border"]} !important;
+    padding: 10px 14px !important;
+}}
+
+/* ── TEXTAREA ──────────────────────────────────── */
+textarea {{
+    font-family: 'JetBrains Mono', 'Courier New', monospace !important;
+    font-size: 12px !important;
+    line-height: 1.75 !important;
+    background: {t["input_bg"]} !important;
+    color: {t["text_input"]} !important;
+    border: 1.5px solid {t["input_border"]} !important;
+    border-radius: 12px !important;
+    padding: 16px 18px !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}}
+textarea:focus {{
+    border-color: {C_ORANGE} !important;
+    box-shadow: {t["input_shadow_f"]} !important;
+    outline: none !important;
+}}
+
+/* ── ALERTS ────────────────────────────────────── */
+[data-testid="stAlert"],
+div[class*="stSuccess"],
+div[class*="stWarning"],
+div[class*="stError"],
+div[class*="stInfo"] {{
+    border-radius: 12px !important;
+    border: none !important;
+    padding: 13px 18px !important;
+}}
+div[class*="stSuccess"] {{
+    background: {t["ok_bg"]} !important;
+    border-left: 3px solid {t["ok_br"]} !important;
+}}
+div[class*="stWarning"] {{
+    background: {t["warn_bg"]} !important;
+    border-left: 3px solid {t["warn_br"]} !important;
+}}
+div[class*="stError"] {{
+    background: {t["err_bg"]} !important;
+    border-left: 3px solid {t["err_br"]} !important;
+}}
+div[class*="stInfo"] {{
+    background: {t["info_bg"]} !important;
+    border-left: 3px solid {t["info_br"]} !important;
+}}
+div[class*="stSuccess"] *,
+div[class*="stWarning"] *,
+div[class*="stError"] *,
+div[class*="stInfo"] * {{
+    color: {t["text_body"]} !important;
+}}
+
+/* ── CAPTIONS ──────────────────────────────────── */
+.stCaption, [data-testid="stCaptionContainer"] * {{
+    font-size: 11px !important;
+    color: {t["text_muted"]} !important;
+    letter-spacing: 0.2px !important;
+}}
+
+/* ── SCROLLBAR ─────────────────────────────────── */
+::-webkit-scrollbar {{ width: 5px; height: 5px; }}
+::-webkit-scrollbar-track {{ background: transparent; }}
+::-webkit-scrollbar-thumb {{
+    background: {t["scroll"]};
+    border-radius: 4px;
+}}
+::-webkit-scrollbar-thumb:hover {{ background: {C_ORANGE}; }}
+
+/* ── EXPANDER ──────────────────────────────────── */
+[data-testid="stExpander"] {{
+    background: {t["card_bg"]} !important;
+    border: 1px solid {t["card_border"]} !important;
+    border-radius: 12px !important;
+}}
+[data-testid="stExpander"] summary {{
+    color: {t["text_body"]} !important;
+    font-weight: 500 !important;
+    padding: 12px 16px !important;
+}}
+[data-testid="stExpander"] summary:hover {{
+    color: {C_ORANGE} !important;
+}}
+
+/* ── COLUMN CONTAINER ──────────────────────────── */
+[data-testid="stHorizontalBlock"] > div {{
+    gap: 16px !important;
+}}
+</style>
+"""
     st.markdown(css, unsafe_allow_html=True)
 
 
-T = THEMES[st.session_state["theme"]]
-apply_theme(T)
+inject_css(T)
 
-PLOT_BG   = T["plot_bg"]
-PLOT_FONT = T["font"]
-PLOT_GRID = T["grid"]
+PBG  = T["plot_bg"]
+PFG  = T["plot_font"]
+PGRD = T["plot_grid"]
 
 
-# ══════════════════════════════════════════════
-# 3. DATEN LADEN
-# ══════════════════════════════════════════════
-
-@st.cache_data(show_spinner="📊 Daten werden geladen …")
+# ══════════════════════════════════════════════════════════════════
+# 5 · DATEN LADEN
+# ══════════════════════════════════════════════════════════════════
+@st.cache_data(show_spinner="🌸  Daten werden geladen …")
 def load_google(path: str = "Senzera_Dashboard_Data.csv") -> pd.DataFrame:
     if not os.path.exists(path):
         return pd.DataFrame()
     df = pd.read_csv(path)
     missing = REQ_GOOGLE - set(df.columns)
     if missing:
-        st.error(f"Fehlende Spalten in '{path}': {missing}")
+        st.error(f"Fehlende Spalten in Google-CSV: {missing}")
         st.stop()
-    if "Monat"      not in df.columns: df["Monat"]      = "Unbekannt"
-    if "NewReviews" not in df.columns: df["NewReviews"] = 0
-    if "NPS"        not in df.columns: df["NPS"]        = None
-    df["Studio_Name"] = df["Studiokürzel"] + " (" + df["Stadt"] + ")"
-    df["Rating"]      = pd.to_numeric(df["Rating"],     errors="coerce")
-    df["NewReviews"]  = pd.to_numeric(df["NewReviews"], errors="coerce").fillna(0).astype(int)
-    df["NPS"]         = pd.to_numeric(df["NPS"],        errors="coerce")
+    for col, default in [
+        ("Monat", "Unbekannt"), ("NPS", None)
+    ]:
+        if col not in df.columns:
+            df[col] = default
+    if "NewReviews"   not in df.columns: df["NewReviews"]   = 0
+    if "TotalReviews" not in df.columns: df["TotalReviews"] = None
+    df["Studio_Name"]  = df["Studiokürzel"] + " (" + df["Stadt"] + ")"
+    df["Rating"]       = pd.to_numeric(df["Rating"],       errors="coerce")
+    df["NewReviews"]   = pd.to_numeric(df["NewReviews"],   errors="coerce").fillna(0).astype(int)
+    df["NPS"]          = pd.to_numeric(df["NPS"],          errors="coerce")
+    df["TotalReviews"] = pd.to_numeric(df["TotalReviews"], errors="coerce")
     return df
 
 
@@ -331,9 +623,6 @@ def load_zenloop(path: str = "Zenloop_Antworten.csv") -> pd.DataFrame:
     if not os.path.exists(path):
         return pd.DataFrame()
     df = pd.read_csv(path)
-    missing = REQ_ZENLOOP - set(df.columns)
-    if missing:
-        st.warning(f"Fehlende Zenloop-Spalten: {missing}")
     df["score"] = pd.to_numeric(df.get("score", pd.Series(dtype=float)), errors="coerce")
     if "date_received" in df.columns:
         df["date_received"] = pd.to_datetime(df["date_received"], errors="coerce")
@@ -341,35 +630,47 @@ def load_zenloop(path: str = "Zenloop_Antworten.csv") -> pd.DataFrame:
     return df
 
 
-# ══════════════════════════════════════════════
-# 4. HILFSFUNKTIONEN
-# ══════════════════════════════════════════════
+df_google  = load_google()
+df_zenloop = load_zenloop()
 
+if df_google.empty:
+    st.error("❌ **'Senzera_Dashboard_Data.csv'** nicht gefunden.")
+    st.info("Bitte Datei in denselben Ordner wie dieses Skript legen und neu starten.")
+    st.stop()
+
+
+# ══════════════════════════════════════════════════════════════════
+# 6 · HELFER
+# ══════════════════════════════════════════════════════════════════
 def calc_nps(df: pd.DataFrame) -> Optional[float]:
     if df.empty or "score_type" not in df.columns: return None
     total = len(df)
     if total == 0: return None
-    prom = (df["score_type"] == "promoter").sum()
-    detr = (df["score_type"] == "detractor").sum()
-    return round(((prom - detr) / total) * 100, 1)
+    p = (df["score_type"] == "promoter").sum()
+    d = (df["score_type"] == "detractor").sum()
+    return round((p - d) / total * 100, 1)
 
 
-def calc_nps_from_score(df: pd.DataFrame) -> Optional[float]:
+def calc_nps_score(df: pd.DataFrame) -> Optional[float]:
     if df.empty or "score" not in df.columns: return None
-    scores = df["score"].dropna()
-    if len(scores) == 0: return None
-    return round(((scores >= 9).sum() - (scores <= 6).sum()) / len(scores) * 100, 1)
+    s = df["score"].dropna()
+    if s.empty: return None
+    return round(((s >= 9).sum() - (s <= 6).sum()) / len(s) * 100, 1)
+
+
+def get_nps(df: pd.DataFrame) -> Optional[float]:
+    return calc_nps(df) or calc_nps_score(df)
 
 
 def calc_sentiment(df: pd.DataFrame) -> Optional[float]:
     if df.empty or "sentiment" not in df.columns: return None
-    with_c = df.dropna(subset=["comment"]) if "comment" in df.columns else df
-    with_c = with_c[with_c["comment"].astype(str).str.strip().ne("nan")]
-    if with_c.empty: return None
-    return round((with_c["sentiment"] == "positive").sum() / len(with_c) * 100, 1)
+    c = df.dropna(subset=["comment"]) if "comment" in df.columns else df
+    c = c[c["comment"].astype(str).str.strip().ne("nan")]
+    if c.empty: return None
+    return round((c["sentiment"] == "positive").sum() / len(c) * 100, 1)
 
 
-def get_top_labels(df: pd.DataFrame, n: int = 5) -> pd.Series:
+def top_labels(df: pd.DataFrame, n: int = 6) -> pd.Series:
     if "labels" not in df.columns: return pd.Series(dtype=int)
     return (
         df["labels"].dropna()
@@ -379,618 +680,816 @@ def get_top_labels(df: pd.DataFrame, n: int = 5) -> pd.Series:
     )
 
 
-def get_neg_labels(df: pd.DataFrame, n: int = 5) -> pd.Series:
+def neg_labels(df: pd.DataFrame, n: int = 4) -> pd.Series:
     if "labels" not in df.columns or "score_type" not in df.columns:
         return pd.Series(dtype=int)
-    return get_top_labels(df[df["score_type"] == "detractor"], n)
+    return top_labels(df[df["score_type"] == "detractor"], n)
 
 
-def rating_emoji(r: float) -> str:
-    if r >= RATING_GOOD:     return "✅"
-    if r >= RATING_CRITICAL: return "⚠️"
-    return "🚨"
+def rating_icon(r: float) -> str:
+    return "✅" if r >= RATING_GOOD else ("⚠️" if r >= RATING_MIN else "🚨")
 
 
-def nps_bewertung(nps: float) -> str:
-    if nps >= 70: return "Weltklasse 🏆"
-    if nps >= 50: return "Exzellent 🌟"
-    if nps >= 30: return "Gut 👍"
-    if nps >= 0:  return "Verbesserungspotenzial ⚠️"
+def nps_label(n: float) -> str:
+    if n >= 70: return "Weltklasse 🏆"
+    if n >= 50: return "Exzellent 🌟"
+    if n >= 30: return "Gut 👍"
+    if n >= 0:  return "Ausbaufähig ⚠️"
     return "Kritisch 🚨"
 
 
-# ══════════════════════════════════════════════
-# 5. DATEN LADEN
-# ══════════════════════════════════════════════
-
-df_google  = load_google()
-df_zenloop = load_zenloop()
-
-if df_google.empty:
-    st.error("❌ **'Senzera_Dashboard_Data.csv'** nicht gefunden!")
-    st.info("Bitte lege die Datei im selben Ordner wie dieses Skript ab und starte neu.")
-    st.stop()
+def fmt_n(v: Optional[float]) -> str:
+    return f"{v:.0f} ({nps_label(v)})" if v is not None else "keine Daten"
 
 
-# ══════════════════════════════════════════════
-# 6. SIDEBAR – FILTER
-# ══════════════════════════════════════════════
+def badge(text: str, bg: str = None, fg: str = None) -> str:
+    bg_ = bg or T["tag_bg"]
+    fg_ = fg or T["tag_fg"]
+    return (
+        f"<span style='display:inline-flex;align-items:center;padding:3px 11px;"
+        f"background:{bg_};color:{fg_};border-radius:100px;font-size:11px;"
+        f"font-weight:600;letter-spacing:0.2px;white-space:nowrap;'>{text}</span>"
+    )
 
-with st.sidebar:
-    # Senzera Branding
+
+def section_title(title: str, sub: str = "") -> None:
+    sub_html = f"<div style='font-size:12px;color:{T['text_muted']};margin-top:2px;'>{sub}</div>" if sub else ""
     st.markdown(
-        f"""
-        <div style="padding:8px 0 16px;text-align:center;">
-            <div style="font-size:26px;margin-bottom:4px;">🌸</div>
-            <div style="font-family:'Jost',sans-serif;font-size:20px;font-weight:700;
-                        color:{C_ORANGE};letter-spacing:-0.5px;">senzera</div>
-            <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;
-                        color:{T['text_muted']};margin-top:2px;">waxing & beauty</div>
-            <div style="margin-top:10px;font-size:10px;letter-spacing:2px;
-                        text-transform:uppercase;color:{C_ORANGE};font-weight:600;">
-                Performance Hub
-            </div>
-        </div>
-        """,
+        f"""<div style='margin-bottom:14px;'>
+            <div style='display:flex;align-items:center;gap:8px;'>
+                <div style='width:3px;height:18px;background:linear-gradient(180deg,{C_ORANGE},{C_ORANGE_LT});
+                            border-radius:2px;flex-shrink:0;'></div>
+                <span style='font-size:14px;font-weight:700;color:{T["text_h"]};
+                             letter-spacing:0px;'>{title}</span>
+            </div>{sub_html}</div>""",
         unsafe_allow_html=True,
     )
 
-    st.divider()
 
-    theme_choice = st.radio(
-        "🎨 Design",
-        list(THEMES.keys()),
-        horizontal=True,
-        index=list(THEMES.keys()).index(st.session_state["theme"]),
+def label_bar(label: str, cnt: int, max_cnt: int, color: str = C_ORANGE, bg: str = None) -> None:
+    pct = int(cnt / max_cnt * 100) if max_cnt > 0 else 0
+    bg_ = bg or T["card_bg"]
+    border_col = T["card_border"]
+    st.markdown(
+        f"""<div style='display:flex;align-items:center;gap:10px;margin:5px 0;
+                        padding:9px 13px;background:{bg_};
+                        border:1px solid {border_col};border-radius:10px;'>
+            <div style='flex:1;min-width:0;'>
+                <div style='display:flex;justify-content:space-between;margin-bottom:5px;'>
+                    <span style='font-size:13px;font-weight:500;color:{T["text_body"]};
+                                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+                                 max-width:75%;'>{label}</span>
+                    <span style='font-size:11.5px;font-weight:700;color:{color};'>{cnt}×</span>
+                </div>
+                <div style='background:{T["divider"]};height:4px;border-radius:3px;overflow:hidden;'>
+                    <div style='width:{pct}%;height:100%;background:{color};
+                                border-radius:3px;transition:width 0.3s ease;'></div>
+                </div>
+            </div></div>""",
+        unsafe_allow_html=True,
     )
-    if theme_choice != st.session_state["theme"]:
-        st.session_state["theme"] = theme_choice
+
+
+def plotly_base() -> dict:
+    return dict(
+        plot_bgcolor=PBG, paper_bgcolor=PBG,
+        font=dict(color=PFG, family="DM Sans", size=12),
+        margin=dict(l=4, r=4, t=8, b=8),
+        showlegend=False,
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# 7 · SIDEBAR
+# ══════════════════════════════════════════════════════════════════
+with st.sidebar:
+
+    # ── Branding ────────────────────────────────────────────────
+    st.markdown(
+        f"""<div style='padding:22px 2px 18px;border-bottom:1px solid {T["sidebar_border"]};
+                        margin-bottom:20px;'>
+            <div style='display:flex;align-items:center;gap:12px;'>
+                <div style='width:42px;height:42px;background:{C_ORANGE};border-radius:13px;
+                            display:flex;align-items:center;justify-content:center;
+                            font-size:21px;flex-shrink:0;
+                            box-shadow:0 4px 12px rgba(232,98,10,0.35);'>🌸</div>
+                <div>
+                    <div style='font-family:"Instrument Serif",serif;font-size:20px;
+                                color:{T["text_h"]};line-height:1.1;letter-spacing:-0.3px;'>
+                        senzera
+                    </div>
+                    <div style='font-size:9px;letter-spacing:2.5px;text-transform:uppercase;
+                                color:{C_ORANGE};font-weight:700;margin-top:2px;'>
+                        Performance Hub
+                    </div>
+                </div>
+            </div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+    # ── Theme ────────────────────────────────────────────────────
+    st.markdown(
+        f"<div style='font-size:9.5px;font-weight:700;letter-spacing:1.5px;"
+        f"text-transform:uppercase;color:{T['text_muted']};margin-bottom:8px;'>Darstellung</div>",
+        unsafe_allow_html=True,
+    )
+    theme_choice = st.radio(
+        "Darstellung", list(THEMES.keys()), horizontal=True,
+        index=list(THEMES.keys()).index(st.session_state.theme),
+        label_visibility="collapsed",
+    )
+    if theme_choice != st.session_state.theme:
+        st.session_state.theme = theme_choice
         st.rerun()
 
-    st.divider()
+    st.markdown(f"<div style='height:18px;border-bottom:1px solid {T['sidebar_border']};margin-bottom:20px;'></div>", unsafe_allow_html=True)
 
+    # ── Filter ───────────────────────────────────────────────────
     st.markdown(
-        f"<div style='font-size:10px;letter-spacing:2px;text-transform:uppercase;"
-        f"color:{C_ORANGE};font-weight:600;margin-bottom:10px;'>Filter</div>",
+        f"<div style='font-size:9.5px;font-weight:700;letter-spacing:1.5px;"
+        f"text-transform:uppercase;color:{T['text_muted']};margin-bottom:14px;'>Filter</div>",
         unsafe_allow_html=True,
     )
 
-    rl_options = ["Alle"] + sorted(df_google["Regionalleitung"].dropna().unique().tolist())
-    sel_rl     = st.selectbox("Regionalleitung", rl_options)
+    # Regionalleitung
+    rl_opts = ["Alle"] + sorted(df_google["Regionalleitung"].dropna().unique().tolist())
+    sel_rl  = st.selectbox("Regionalleitung", rl_opts)
+    df_rl   = df_google if sel_rl == "Alle" else df_google[df_google["Regionalleitung"] == sel_rl]
 
-    df_by_rl       = df_google if sel_rl == "Alle" else df_google[df_google["Regionalleitung"] == sel_rl]
-    studio_options = sorted(df_by_rl["Studio_Name"].unique().tolist())
+    # Berichtsmonat
+    all_months = sorted(df_rl["Monat"].dropna().unique().tolist())
+    if len(all_months) > 1:
+        sel_monat = st.selectbox("Berichtsmonat", all_months, index=len(all_months) - 1)
+    else:
+        sel_monat = all_months[-1] if all_months else "Unbekannt"
+        st.markdown(
+            f"<div style='padding:10px 12px;background:{T['card_bg']};"
+            f"border:1px solid {T['card_border']};border-radius:11px;font-size:13px;"
+            f"color:{T['text_body']};margin-bottom:12px;'>"
+            f"📅 <b>{sel_monat}</b></div>",
+            unsafe_allow_html=True,
+        )
+
+    # Studio-Auswahl mit Alle/Keine
+    studio_opts = sorted(df_rl["Studio_Name"].unique().tolist())
+    sa, sb = st.columns(2)
+    if sa.button("Alle", use_container_width=True):
+        st.session_state.sel_studios = studio_opts
+    if sb.button("Keine", use_container_width=True):
+        st.session_state.sel_studios = []
+
+    default_sel = st.session_state.get("sel_studios", studio_opts)
+    default_sel = [s for s in default_sel if s in studio_opts]
+    if not default_sel:
+        default_sel = studio_opts
 
     sel_studios = st.multiselect(
-        "Studios", studio_options, default=studio_options,
-        help="Mehrfachauswahl möglich",
+        "Studios",
+        studio_opts,
+        default=default_sel,
+        label_visibility="visible",
     )
+    st.session_state.sel_studios = sel_studios
 
     if not sel_studios:
-        st.warning("⚠️ Bitte mindestens ein Studio auswählen.")
+        st.warning("⚠️ Bitte mindestens ein Studio wählen.")
         st.stop()
 
-    st.divider()
-
-    alle_monate = sorted(df_by_rl["Monat"].dropna().unique().tolist())
-    sel_monat   = (
-        st.selectbox("Monat", alle_monate, index=len(alle_monate) - 1)
-        if len(alle_monate) > 1
-        else (alle_monate[-1] if alle_monate else "Unbekannt")
-    )
-
+    # Auswahl-Zusammenfassung
+    n_sel = len(sel_studios)
+    n_all = len(studio_opts)
+    fill_pct = int(n_sel / n_all * 100) if n_all else 0
     st.markdown(
-        f"<div style='font-size:11px;color:{T['text_muted']};margin-top:4px;'>"
-        f"📅 Aktiver Monat: <b style='color:{T['text_body']}'>{sel_monat}</b></div>",
+        f"""<div style='margin-top:12px;padding:14px 16px;background:{T["summary_bg"]};
+                        border-radius:12px;border:1px solid rgba(232,98,10,0.18);'>
+            <div style='display:flex;justify-content:space-between;align-items:flex-end;
+                        margin-bottom:8px;'>
+                <div>
+                    <div style='font-size:9.5px;font-weight:700;letter-spacing:1.3px;
+                                text-transform:uppercase;color:{T["text_muted"]};margin-bottom:3px;'>
+                        Auswahl
+                    </div>
+                    <div style='font-size:22px;font-weight:800;color:{T["text_h"]};
+                                line-height:1;'>{n_sel}</div>
+                </div>
+                <div style='font-size:12px;color:{T["text_muted"]};text-align:right;'>
+                    von {n_all}<br>Studios
+                </div>
+            </div>
+            <div style='background:rgba(0,0,0,0.06);height:5px;border-radius:3px;overflow:hidden;'>
+                <div style='width:{fill_pct}%;height:100%;
+                            background:linear-gradient(90deg,{C_ORANGE},{C_ORANGE_LT});
+                            border-radius:3px;'></div>
+            </div>
+        </div>""",
         unsafe_allow_html=True,
     )
 
-    st.divider()
+    st.markdown(f"<div style='height:16px;border-bottom:1px solid {T['sidebar_border']};margin-bottom:16px;'></div>", unsafe_allow_html=True)
 
     if st.button("🔄 Cache leeren & neu laden", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
     st.markdown(
-        f"<div style='font-size:10px;color:{T['text_muted']};text-align:center;"
-        f"margin-top:16px;'>Senzera Hub · lokal verarbeitet</div>",
+        f"<div style='padding:16px 4px 8px;text-align:center;font-size:10px;"
+        f"color:{T['text_muted']};'>Alle Daten lokal · keine externe Übertragung</div>",
         unsafe_allow_html=True,
     )
 
 
-# ══════════════════════════════════════════════
-# 7. GEFILTERTE DATENSÄTZE & KPIs
-# ══════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════
+# 8 · DATEN FILTERN & KPIs BERECHNEN
+# ══════════════════════════════════════════════════════════════════
+df_view    = df_rl[df_rl["Studio_Name"].isin(sel_studios)].copy()
+df_curr    = df_view[df_view["Monat"] == sel_monat].copy()
 
-df_view    = df_by_rl[df_by_rl["Studio_Name"].isin(sel_studios)].copy()
-df_current = df_view[df_view["Monat"] == sel_monat].copy()
+months_s   = sorted(df_view["Monat"].dropna().unique().tolist())
+idx_curr   = months_s.index(sel_monat) if sel_monat in months_s else -1
+vormonat   = months_s[idx_curr - 1] if idx_curr > 0 else None
+df_vm      = df_view[df_view["Monat"] == vormonat].copy() if vormonat else pd.DataFrame()
 
-monate_sorted = sorted(df_view["Monat"].dropna().unique().tolist())
-idx_aktuell   = monate_sorted.index(sel_monat) if sel_monat in monate_sorted else -1
-vormonat      = monate_sorted[idx_aktuell - 1] if idx_aktuell > 0 else None
-df_vormonat   = df_view[df_view["Monat"] == vormonat].copy() if vormonat else pd.DataFrame()
-
-selected_codes = df_current["Studiokürzel"].unique()
-df_zen = (
-    df_zenloop[df_zenloop["Property - studio"].isin(selected_codes)].copy()
+sel_codes  = df_curr["Studiokürzel"].unique()
+df_zen     = (
+    df_zenloop[df_zenloop["Property - studio"].isin(sel_codes)].copy()
     if not df_zenloop.empty else pd.DataFrame()
 )
 
-avg_rating       = df_current["Rating"].mean()         if not df_current.empty else 0.0
-total_reviews    = int(df_current["NewReviews"].sum())  if not df_current.empty else 0
-nps_gesamt       = calc_nps(df_zen) or calc_nps_from_score(df_zen)
-sentiment_pct    = calc_sentiment(df_zen)
-total_responses  = len(df_zen)
-avg_rating_vm    = df_vormonat["Rating"].mean() if not df_vormonat.empty else None
-delta_rating     = round(avg_rating - avg_rating_vm, 2) if avg_rating_vm is not None else None
-critical_studios = df_current[df_current["Rating"] < RATING_CRITICAL]
-n_critical       = len(critical_studios)
+avg_rating  = df_curr["Rating"].mean()       if not df_curr.empty else 0.0
+new_rev     = int(df_curr["NewReviews"].sum()) if not df_curr.empty else 0
+# Gesamt-Rezensionen
+if "TotalReviews" in df_curr.columns and df_curr["TotalReviews"].notna().any():
+    total_rev = int(df_curr["TotalReviews"].sum())
+else:
+    total_rev = int(df_view["NewReviews"].sum())
+
+nps_ges     = get_nps(df_zen)
+sentiment   = calc_sentiment(df_zen)
+n_zen       = len(df_zen)
+
+avg_r_vm    = df_vm["Rating"].mean() if not df_vm.empty else None
+delta_r     = round(avg_rating - avg_r_vm, 2) if avg_r_vm is not None else None
+crit        = df_curr[df_curr["Rating"] < RATING_MIN]
+n_crit      = len(crit)
+
+codes_zen   = sorted(df_zen["Property - studio"].dropna().unique().tolist()) if not df_zen.empty else []
 
 
-# ══════════════════════════════════════════════
-# 8. HEADER
-# ══════════════════════════════════════════════
-
-col_h1, col_h2 = st.columns([3, 1])
-with col_h1:
+# ══════════════════════════════════════════════════════════════════
+# 9 · PAGE HEADER
+# ══════════════════════════════════════════════════════════════════
+hc1, hc2 = st.columns([5, 1])
+with hc1:
+    badges_html = " ".join([
+        badge("Management Cockpit"),
+        badge(sel_monat, T["card_bg"], T["text_second"]),
+        badge(sel_rl,    T["card_bg"], T["text_second"]),
+    ])
     st.markdown(
-        f"""
-        <div style="margin-bottom:4px;">
-            <span style="font-size:10px;letter-spacing:3px;text-transform:uppercase;
-                         color:{C_ORANGE};font-weight:600;">Performance Cockpit</span>
-        </div>
-        <h1 style="font-family:'Jost',sans-serif;font-size:30px;font-weight:700;
-                   letter-spacing:-1px;margin:0 0 6px;color:{T['text_h']};">
-            Studio-Übersicht
-        </h1>
-        <p style="font-size:13px;color:{T['text_muted']};margin:0;">
-            Region: <b style="color:{T['text_body']}">{sel_rl}</b>
-            &nbsp;·&nbsp; Monat: <b style="color:{T['text_body']}">{sel_monat}</b>
-            &nbsp;·&nbsp; {len(sel_studios)} Studio(s) aktiv
-        </p>
-        """,
+        f"""<div style='margin-bottom:18px;'>
+            <div style='display:flex;align-items:center;gap:7px;margin-bottom:10px;flex-wrap:wrap;'>
+                {badges_html}
+            </div>
+            <h1 style='margin:0 0 6px;'>Studio-Performance</h1>
+            <p style='font-size:14px;color:{T["text_muted"]};margin:0;font-weight:400;'>
+                {n_sel} Studio{'s' if n_sel != 1 else ''} aktiv
+                {"&nbsp;·&nbsp; Vergleich zu <b>" + vormonat + "</b>" if vormonat else ""}
+            </p>
+        </div>""",
         unsafe_allow_html=True,
     )
-with col_h2:
-    if n_critical > 0:
-        st.error(f"🚨 {n_critical} Studio(s) kritisch")
+with hc2:
+    if n_crit > 0:
+        st.error(f"🚨 {n_crit} kritisch")
     else:
-        st.success("✅ Alle Studios OK")
-
-st.divider()
+        st.success("✅ Alles OK")
 
 
-# ══════════════════════════════════════════════
-# 9. TOP KPIs
-# ══════════════════════════════════════════════
-
-k1, k2, k3, k4, k5 = st.columns(5)
+# ══════════════════════════════════════════════════════════════════
+# 10 · KPI-LEISTE (6 Kacheln inkl. Gesamt-Rezensionen)
+# ══════════════════════════════════════════════════════════════════
+k1, k2, k3, k4, k5, k6 = st.columns(6)
 
 k1.metric(
-    "🌟 Google Ø-Rating",
+    "Google Ø-Rating",
     f"{avg_rating:.2f} ⭐",
-    delta=f"{delta_rating:+.2f} vs. {vormonat}" if delta_rating is not None else None,
-    delta_color="normal" if delta_rating and delta_rating >= 0 else "inverse",
+    delta=f"{delta_r:+.2f} vs. {vormonat}" if delta_r is not None else None,
+    delta_color="normal" if delta_r and delta_r >= 0 else "inverse",
 )
-k2.metric("📝 Neue Rezensionen", f"{total_reviews:,}".replace(",", "."))
-if nps_gesamt is not None:
-    k3.metric(
-        "💙 Zenloop NPS", f"{nps_gesamt:.0f}",
-        delta=nps_bewertung(nps_gesamt),
-        delta_color="normal" if nps_gesamt >= 0 else "inverse",
+k2.metric(
+    "Neue Rez. (Monat)",
+    f"{new_rev:,}".replace(",", "."),
+    delta=sel_monat, delta_color="off",
+)
+k3.metric(
+    "Google Rez. Gesamt",
+    f"{total_rev:,}".replace(",", "."),
+    delta="alle Monate",
+    delta_color="off",
+    help="Summe aller verfügbaren Google-Rezensionen der gewählten Studios",
+)
+if nps_ges is not None:
+    k4.metric(
+        "Zenloop NPS",
+        f"{nps_ges:.0f}",
+        delta=nps_label(nps_ges),
+        delta_color="normal" if nps_ges >= 0 else "inverse",
     )
 else:
-    k3.metric("💙 Zenloop NPS", "–")
-k4.metric(
-    "😊 Positive Stimmung",
-    f"{sentiment_pct:.0f}%" if sentiment_pct is not None else "–",
-    help="Anteil positiver Kommentare (nur Einträge mit Text)",
+    k4.metric("Zenloop NPS", "–", delta="keine Daten", delta_color="off")
+
+k5.metric(
+    "Positive Stimmung",
+    f"{sentiment:.0f}%" if sentiment is not None else "–",
+    delta="der Kommentare", delta_color="off",
+    help="Anteil positiver Kommentare – nur Zeilen mit Textkommentar",
 )
-k5.metric("📨 Zenloop Antworten", f"{total_responses:,}".replace(",", "."))
+k6.metric(
+    "Zenloop Antworten",
+    f"{n_zen:,}".replace(",", "."),
+    delta="Gesamtzeitraum", delta_color="off",
+)
 
 
-# ══════════════════════════════════════════════
-# 10. ALARM-ZONE
-# ══════════════════════════════════════════════
-
-if not critical_studios.empty:
+# ══════════════════════════════════════════════════════════════════
+# 11 · ALARM
+# ══════════════════════════════════════════════════════════════════
+st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+if not crit.empty:
     st.error(
-        f"🚨 **HANDLUNGSBEDARF:** {n_critical} Studio{'s' if n_critical > 1 else ''} "
-        f"unter {RATING_CRITICAL} Sternen"
+        f"🚨 **HANDLUNGSBEDARF:** {n_crit} Studio{'s' if n_crit > 1 else ''} "
+        f"unter {RATING_MIN} Sternen"
     )
-    alarm_cols = st.columns(min(n_critical, 4))
-    for idx, (_, row) in enumerate(critical_studios.iterrows()):
+    alarm_cols = st.columns(min(n_crit, 4))
+    for idx, (_, row) in enumerate(crit.iterrows()):
         with alarm_cols[idx % 4]:
-            zen_s   = df_zen[df_zen["Property - studio"] == row["Studiokürzel"]] if not df_zen.empty else pd.DataFrame()
-            s_nps   = calc_nps(zen_s)
-            neg_lb  = get_neg_labels(zen_s, 2)
-            nps_str = f" | NPS: {s_nps:.0f}" if s_nps is not None else ""
-            neg_str = f"\n⚠️ Kritik: {', '.join(neg_lb.index.tolist())}" if not neg_lb.empty else ""
+            zs     = df_zen[df_zen["Property - studio"] == row["Studiokürzel"]] if not df_zen.empty else pd.DataFrame()
+            sn     = get_nps(zs)
+            nl     = neg_labels(zs, 2)
+            nstr   = f" | NPS: {sn:.0f}" if sn is not None else ""
+            nlstr  = f"\n⚠️ Kritik: {', '.join(nl.index.tolist())}" if not nl.empty else ""
             st.warning(
                 f"**{row['Studiokürzel']}** – {row['Stadt']}\n\n"
-                f"{row['Rating']:.2f} ⭐ | +{row['NewReviews']} Rez.{nps_str}{neg_str}"
+                f"{row['Rating']:.2f} ⭐ | +{row['NewReviews']} Rez.{nstr}{nlstr}"
             )
 else:
-    st.success("✅ Alle Studios im grünen Bereich.")
+    st.success("✅ Alle ausgewählten Studios befinden sich im grünen Bereich.")
 
 st.divider()
 
 
-# ══════════════════════════════════════════════
-# 11. ANALYSE-TABS
-# ══════════════════════════════════════════════
-
+# ══════════════════════════════════════════════════════════════════
+# 12 · TABS
+# ══════════════════════════════════════════════════════════════════
 tab1, tab2, tab3 = st.tabs([
-    "📊  Performance & Trends",
-    "💙  Zenloop Deep-Dive",
-    "📝  Management-Bericht",
+    "  📊  Performance & Trends  ",
+    "  💙  Zenloop Deep-Dive  ",
+    "  📝  Management-Bericht  ",
 ])
 
 
-# ── TAB 1: PERFORMANCE & TRENDS ──────────────
+# ──────────────────────────────────────────────────────────────────
+# TAB 1 · PERFORMANCE & TRENDS
+# ──────────────────────────────────────────────────────────────────
 with tab1:
-    c1, c2 = st.columns(2)
+    col_l, col_r = st.columns(2, gap="large")
 
-    with c1:
-        st.subheader("Google Ranking")
-        df_ranked  = df_current.sort_values("Rating", ascending=True).copy()
-        bar_colors = df_ranked["Rating"].apply(
-            lambda r: C_CHART_RED if r < RATING_CRITICAL else
-                      (C_HONEY    if r < RATING_GOOD      else C_CHART_GREEN)
+    # ── Ranking ─────────────────────────────────────────────────
+    with col_l:
+        section_title("Google Ranking", f"Bewertungen im Monat {sel_monat}")
+        df_rk = df_curr.sort_values("Rating", ascending=True).copy()
+        bar_c = df_rk["Rating"].apply(
+            lambda r: C_RED  if r < RATING_MIN else (C_HONEY if r < RATING_GOOD else C_MINT)
         ).tolist()
-
-        fig_rank = go.Figure(go.Bar(
-            x=df_ranked["Rating"], y=df_ranked["Studiokürzel"],
+        fig_rk = go.Figure(go.Bar(
+            x=df_rk["Rating"], y=df_rk["Studiokürzel"],
             orientation="h",
-            marker_color=bar_colors,
-            marker_line_color="rgba(0,0,0,0.08)",
-            marker_line_width=0.5,
-            text=df_ranked["Rating"].apply(lambda r: f"{r:.2f}"),
+            marker=dict(color=bar_c, cornerradius=6, line=dict(width=0)),
+            text=df_rk["Rating"].apply(lambda r: f"{r:.2f}"),
             textposition="outside",
-            textfont=dict(color=PLOT_FONT, size=12, family="Jost"),
-            hovertemplate="<b>%{y}</b><br>Rating: %{x:.2f}<extra></extra>",
+            textfont=dict(color=PFG, size=12),
+            hovertemplate="<b>%{y}</b><br>⭐ %{x:.2f}<extra></extra>",
         ))
-        fig_rank.add_vline(
-            x=RATING_CRITICAL, line_dash="dash", line_color=C_CHART_RED, opacity=0.6,
-            annotation_text=f"Grenze {RATING_CRITICAL}",
-            annotation_font_color=C_CHART_RED, annotation_font_size=11,
+        fig_rk.add_vline(
+            x=RATING_MIN, line_dash="dash", line_color=C_RED,
+            line_width=1.5, opacity=0.6,
+            annotation=dict(
+                text=f"Min. {RATING_MIN}",
+                font=dict(size=10, color=C_RED),
+                bgcolor="rgba(0,0,0,0)",
+            ),
         )
-        fig_rank.update_layout(
-            plot_bgcolor=PLOT_BG, paper_bgcolor=PLOT_BG,
-            font=dict(color=PLOT_FONT, family="Jost"),
-            xaxis=dict(range=[3.5, 5.15], gridcolor=PLOT_GRID, zeroline=False),
-            yaxis=dict(tickfont=dict(size=11)),
-            margin=dict(l=10, r=50, t=10, b=10),
-            height=max(300, len(df_ranked) * 28),
+        fig_rk.update_layout(
+            **plotly_base(),
+            xaxis=dict(range=[3.5, 5.25], gridcolor=PGRD, zeroline=False, tickfont=dict(size=11)),
+            yaxis=dict(tickfont=dict(size=11, color=T["text_second"])),
+            margin=dict(l=4, r=55, t=8, b=8),
+            height=max(260, len(df_rk) * 32),
+            bargap=0.38,
         )
-        st.plotly_chart(fig_rank, use_container_width=True)
+        st.plotly_chart(fig_rk, use_container_width=True)
 
-    with c2:
-        st.subheader("Entwicklungs-Trend")
+    # ── Trend ────────────────────────────────────────────────────
+    with col_r:
+        section_title("Trend-Verlauf", "Monatlicher Ø-Rating")
         trend = (
             df_view.groupby("Monat", sort=False)["Rating"]
             .mean().reset_index().rename(columns={"Rating": "Ø Rating"})
         )
-        fig_t = px.line(trend, x="Monat", y="Ø Rating", markers=True)
-        fig_t.update_traces(
-            line_color=C_ORANGE, line_width=3,
-            marker=dict(size=9, color=C_ORANGE, line=dict(width=2, color=T["bg"])),
-        )
-        # Füllbereich in Senzera Skin
-        fig_t.add_traces(go.Scatter(
+        fig_tr = go.Figure()
+        fig_tr.add_trace(go.Scatter(
             x=trend["Monat"], y=trend["Ø Rating"],
             fill="tozeroy", fillcolor="rgba(232,98,10,0.07)",
             line=dict(width=0), showlegend=False, hoverinfo="skip",
         ))
-        fig_t.add_hline(y=RATING_CRITICAL, line_dash="dot", line_color=C_CHART_RED,   opacity=0.5)
-        fig_t.add_hline(y=RATING_GOOD,     line_dash="dot", line_color=C_CHART_GREEN, opacity=0.4)
-        fig_t.update_layout(
-            plot_bgcolor=PLOT_BG, paper_bgcolor=PLOT_BG,
-            font=dict(color=PLOT_FONT, family="Jost"),
-            yaxis=dict(range=[3.5, 5.0], gridcolor=PLOT_GRID, zeroline=False),
-            xaxis=dict(gridcolor=PLOT_GRID, zeroline=False),
-            margin=dict(l=10, r=10, t=10, b=10),
+        fig_tr.add_trace(go.Scatter(
+            x=trend["Monat"], y=trend["Ø Rating"],
+            line=dict(color=C_ORANGE, width=2.5),
+            marker=dict(
+                size=8, color=C_ORANGE,
+                line=dict(width=2.5, color=T["app_bg"])
+            ),
+            mode="lines+markers",
+            hovertemplate="<b>%{x}</b><br>Ø Rating: %{y:.2f}<extra></extra>",
+        ))
+        y_min = max(3.0, trend["Ø Rating"].min() - 0.4)
+        y_max = min(5.1, trend["Ø Rating"].max() + 0.3)
+        fig_tr.add_hline(y=RATING_MIN, line_dash="dot", line_color=C_RED,  line_width=1.5, opacity=0.5,
+                         annotation=dict(text=f"Kritisch {RATING_MIN}", font=dict(size=10, color=C_RED), bgcolor="rgba(0,0,0,0)"))
+        fig_tr.add_hline(y=RATING_GOOD, line_dash="dot", line_color=C_MINT, line_width=1.5, opacity=0.5,
+                         annotation=dict(text=f"Gut {RATING_GOOD}", font=dict(size=10, color=C_MINT), bgcolor="rgba(0,0,0,0)"))
+        fig_tr.update_layout(
+            **plotly_base(),
+            yaxis=dict(range=[y_min, y_max], gridcolor=PGRD, zeroline=False, tickfont=dict(size=11)),
+            xaxis=dict(gridcolor=PGRD, zeroline=False, tickfont=dict(size=11)),
+            margin=dict(l=4, r=68, t=8, b=8),
         )
-        st.plotly_chart(fig_t, use_container_width=True)
+        st.plotly_chart(fig_tr, use_container_width=True)
 
-    st.subheader("Studio-Übersicht")
-    disp_cols = [c for c in ["Studio_Name", "Rating", "NewReviews", "NPS", "Regionalleitung"] if c in df_current.columns]
-    df_disp   = df_current[disp_cols].sort_values("Rating", ascending=False).reset_index(drop=True)
-    df_disp.insert(0, "Status", df_disp["Rating"].apply(rating_emoji))
-    if not df_vormonat.empty:
-        vm_map = df_vormonat.set_index("Studiokürzel")["Rating"].to_dict()
-        def get_delta(row):
-            matches = df_current[df_current["Studio_Name"] == row.get("Studio_Name", "")]["Studiokürzel"]
-            if matches.empty: return ""
-            old = vm_map.get(matches.values[0])
+    # ── Neue Rezensionen pro Monat ───────────────────────────────
+    if len(months_s) > 1:
+        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+        section_title("Neue Rezensionen / Monat", "Monatlicher Google-Zuwachs · alle ausgewählten Studios")
+        rev_t = df_view.groupby("Monat", sort=False)["NewReviews"].sum().reset_index()
+        fig_rv = go.Figure(go.Bar(
+            x=rev_t["Monat"], y=rev_t["NewReviews"],
+            marker=dict(
+                color=[C_ORANGE if m == sel_monat else C_STONE for m in rev_t["Monat"]],
+                cornerradius=6, line=dict(width=0),
+            ),
+            text=rev_t["NewReviews"], textposition="outside",
+            textfont=dict(color=PFG, size=11),
+            hovertemplate="<b>%{x}</b><br>%{y} neue Rez.<extra></extra>",
+        ))
+        fig_rv.update_layout(
+            **plotly_base(),
+            yaxis=dict(gridcolor=PGRD, zeroline=False),
+            xaxis=dict(gridcolor="rgba(0,0,0,0)", zeroline=False),
+            height=190, bargap=0.42,
+            margin=dict(l=4, r=10, t=8, b=8),
+        )
+        st.plotly_chart(fig_rv, use_container_width=True)
+
+    # ── Studio-Tabelle ───────────────────────────────────────────
+    st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+    section_title("Studio-Übersicht", f"Sortiert nach Rating · {sel_monat}")
+    disp_c = [c for c in ["Studio_Name", "Rating", "NewReviews", "TotalReviews", "NPS", "Regionalleitung"] if c in df_curr.columns]
+    df_d   = df_curr[disp_c].sort_values("Rating", ascending=False).reset_index(drop=True)
+    df_d.insert(0, "Status", df_d["Rating"].apply(rating_icon))
+    if not df_vm.empty:
+        vm_map = df_vm.set_index("Studiokürzel")["Rating"].to_dict()
+        def row_delta(row):
+            m = df_curr[df_curr["Studio_Name"] == row.get("Studio_Name", "")]["Studiokürzel"]
+            if m.empty: return ""
+            old = vm_map.get(m.values[0])
             if old is None: return ""
-            d = round(row["Rating"] - old, 2)
-            return f"+{d}" if d > 0 else str(d)
-        df_disp["Δ Vormonat"] = df_disp.apply(get_delta, axis=1)
-    df_disp.columns = [c.replace("_", " ") for c in df_disp.columns]
-    st.dataframe(df_disp, use_container_width=True, hide_index=True)
+            dv = round(row["Rating"] - old, 2)
+            return f"+{dv}" if dv > 0 else str(dv)
+        df_d["Δ Vormonat"] = df_d.apply(row_delta, axis=1)
+    df_d.columns = [c.replace("_", " ") for c in df_d.columns]
+    st.dataframe(df_d, use_container_width=True, hide_index=True)
 
 
-# ── TAB 2: ZENLOOP DEEP-DIVE ─────────────────
+# ──────────────────────────────────────────────────────────────────
+# TAB 2 · ZENLOOP DEEP-DIVE
+# ──────────────────────────────────────────────────────────────────
 with tab2:
     if df_zen.empty:
-        st.warning("⚠️ Keine Zenloop-Daten gefunden. Bitte 'Zenloop_Antworten.csv' bereitstellen.")
+        st.warning("⚠️ Keine Zenloop-Daten. Bitte 'Zenloop_Antworten.csv' bereitstellen.")
     else:
-        st.subheader("🎯 Studio-Check")
-        codes_mit_zen = sorted(df_zen["Property - studio"].dropna().unique().tolist())
-        sel_s = st.selectbox("Detailanalyse für Studio:", options=codes_mit_zen)
-        df_s  = df_zen[df_zen["Property - studio"] == sel_s]
+        # Studio-Picker + KPIs
+        pc1, pc2 = st.columns([1, 3])
+        with pc1:
+            section_title("Studio-Check")
+            sel_s = st.selectbox("Studio wählen", codes_zen, label_visibility="collapsed")
 
-        s_nps  = calc_nps(df_s) or calc_nps_from_score(df_s)
-        s_sent = calc_sentiment(df_s)
-        s_prom = (df_s["score_type"] == "promoter").sum()  if "score_type" in df_s.columns else 0
-        s_pass = (df_s["score_type"] == "passive").sum()   if "score_type" in df_s.columns else 0
-        s_detr = (df_s["score_type"] == "detractor").sum() if "score_type" in df_s.columns else 0
+        df_s  = df_zen[df_zen["Property - studio"] == sel_s]
+        s_nps  = get_nps(df_s)
+        s_prom = int((df_s["score_type"] == "promoter").sum())  if "score_type" in df_s.columns else 0
+        s_pass = int((df_s["score_type"] == "passive").sum())   if "score_type" in df_s.columns else 0
+        s_detr = int((df_s["score_type"] == "detractor").sum()) if "score_type" in df_s.columns else 0
+
+        with pc2:
+            section_title(f"Studio-Analyse: {sel_s}", f"{len(df_s)} Zenloop-Antworten gesamt")
 
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric(
-            f"NPS {sel_s}",
-            f"{s_nps:.0f}" if s_nps is not None else "–",
-            delta=nps_bewertung(s_nps) if s_nps is not None else None,
-            delta_color="normal" if s_nps and s_nps >= 0 else "inverse",
-        )
-        m2.metric("😊 Promoter",    str(s_prom))
-        m3.metric("😐 Passive",     str(s_pass))
-        m4.metric("😠 Detraktoren", str(s_detr))
+        m1.metric("NPS", f"{s_nps:.0f}" if s_nps is not None else "–",
+                  delta=nps_label(s_nps) if s_nps is not None else None,
+                  delta_color="normal" if s_nps and s_nps >= 0 else "inverse")
+        m2.metric("Promoter 😊",    str(s_prom))
+        m3.metric("Passive 😐",     str(s_pass))
+        m4.metric("Detraktoren 😠", str(s_detr))
 
-        sc1, sc2 = st.columns(2)
-        with sc1:
-            st.markdown("**Top Themen dieses Studios:**")
-            top_lb = get_top_labels(df_s, 6)
-            if not top_lb.empty:
-                for label, cnt in top_lb.items():
-                    pct = int(cnt / len(df_s) * 100) if len(df_s) > 0 else 0
-                    bar_width = max(4, pct)
-                    st.markdown(
-                        f"<div style='display:flex;align-items:center;gap:8px;margin:4px 0;'>"
-                        f"<div style='width:{bar_width}%;max-width:160px;height:6px;"
-                        f"background:{C_ORANGE};border-radius:3px;'></div>"
-                        f"<span style='font-size:13px;color:{T['text_body']}'>{label}</span>"
-                        f"<span style='font-size:11px;color:{T['text_muted']}'>{cnt}×</span>"
-                        f"</div>",
-                        unsafe_allow_html=True,
-                    )
+        st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+        lc, rc = st.columns(2, gap="large")
+
+        with lc:
+            section_title("Top-Themen", "Häufigkeit im Feedback")
+            tlb = top_labels(df_s, 7)
+            if not tlb.empty:
+                max_cnt = int(tlb.max())
+                for lbl, cnt in tlb.items():
+                    label_bar(lbl, cnt, max_cnt)
             else:
                 st.caption("Keine Labels vorhanden.")
-            neg_lb = get_neg_labels(df_s, 4)
-            if not neg_lb.empty:
-                st.markdown("**⚠️ Kritikpunkte (Detraktoren):**")
-                for label, cnt in neg_lb.items():
-                    st.markdown(f"- **{label}** `{cnt}×`")
 
-        with sc2:
-            st.markdown("**Letzte Kommentare:**")
+            nlb = neg_labels(df_s, 4)
+            if not nlb.empty:
+                st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+                section_title("⚠️ Kritikpunkte", "Themen der Detraktoren")
+                for lbl, cnt in nlb.items():
+                    label_bar(lbl, cnt, int(nlb.max()), color=C_RED, bg=T["err_bg"])
+
+        with rc:
+            section_title("Letzte Kommentare", "Niedrigste Scores zuerst")
             if "comment" in df_s.columns:
-                df_comments = (
+                df_com = (
                     df_s[["score", "score_type", "comment"]]
                     .dropna(subset=["comment"])
-                    .sort_values("score")
-                    .head(TOP_COMMENTS)
+                    .query("comment.str.strip() != ''")
+                    .sort_values("score").head(5)
                 )
-                st.dataframe(df_comments, use_container_width=True, hide_index=True)
+                for _, row in df_com.iterrows():
+                    type_color = (C_MINT  if row["score_type"] == "promoter"
+                                  else C_RED if row["score_type"] == "detractor"
+                                  else C_HONEY)
+                    type_bg    = (T["ok_bg"]   if row["score_type"] == "promoter"
+                                  else T["err_bg"] if row["score_type"] == "detractor"
+                                  else T["warn_bg"])
+                    st.markdown(
+                        f"""<div style='padding:13px 15px;background:{T["card_bg"]};
+                                        border:1px solid {T["card_border"]};border-radius:13px;
+                                        margin-bottom:9px;'>
+                            <div style='display:flex;justify-content:space-between;
+                                        align-items:center;margin-bottom:8px;'>
+                                <span style='font-size:22px;font-weight:800;
+                                             color:{type_color};line-height:1;'>
+                                    {int(row["score"])}
+                                </span>
+                                <span style='font-size:10px;font-weight:700;
+                                             color:{type_color};background:{type_bg};
+                                             padding:3px 9px;border-radius:100px;
+                                             text-transform:uppercase;letter-spacing:0.6px;'>
+                                    {row["score_type"]}
+                                </span>
+                            </div>
+                            <div style='font-size:12.5px;color:{T["text_second"]};
+                                        line-height:1.6;font-style:italic;'>
+                                „{str(row["comment"])[:200]}{'…' if len(str(row["comment"])) > 200 else ''}"
+                            </div>
+                        </div>""",
+                        unsafe_allow_html=True,
+                    )
 
         st.divider()
-        st.subheader("Übergreifende Analyse – alle ausgewählten Studios")
+        section_title("Regionale Übersicht", "Alle ausgewählten Studios")
 
-        ov1, ov2 = st.columns(2)
+        ov1, ov2 = st.columns(2, gap="large")
+
         with ov1:
-            st.markdown("**Häufigste Themen gesamt**")
-            all_lb = get_top_labels(df_zen, TOP_LABELS).reset_index()
+            st.markdown(f"<div style='font-size:13px;font-weight:600;color:{T['text_h']};margin-bottom:12px;'>Häufigste Themen gesamt</div>", unsafe_allow_html=True)
+            all_lb = top_labels(df_zen, 10).reset_index()
             all_lb.columns = ["Thema", "Anzahl"]
             if not all_lb.empty:
-                ci_palette = [C_ORANGE, C_STONE, C_HONEY, C_MINT, C_LILAC,
-                              C_SAND, C_ORANGE_LIGHT, C_CHART_GREEN, C_CHART_RED, C_SKIN]
+                ci = [C_ORANGE, C_STONE, C_HONEY, C_MINT, C_LILAC,
+                      C_SAND, C_ORANGE_LT, C_GREEN, C_RED, C_SKIN]
                 fig_lb = go.Figure(go.Bar(
-                    x=all_lb["Anzahl"], y=all_lb["Thema"], orientation="h",
-                    marker_color=ci_palette[:len(all_lb)],
+                    x=all_lb["Anzahl"], y=all_lb["Thema"],
+                    orientation="h",
+                    marker=dict(color=ci[:len(all_lb)], cornerradius=5, line=dict(width=0)),
                     text=all_lb["Anzahl"], textposition="outside",
-                    textfont=dict(color=PLOT_FONT),
+                    textfont=dict(color=PFG, size=11),
+                    hovertemplate="<b>%{y}</b><br>%{x}×<extra></extra>",
                 ))
                 fig_lb.update_layout(
-                    plot_bgcolor=PLOT_BG, paper_bgcolor=PLOT_BG,
-                    font=dict(color=PLOT_FONT, family="Jost"),
-                    xaxis=dict(gridcolor=PLOT_GRID, zeroline=False),
-                    yaxis=dict(categoryorder="total ascending"),
-                    margin=dict(l=10, r=40, t=10, b=10),
+                    **plotly_base(),
+                    xaxis=dict(gridcolor=PGRD, zeroline=False),
+                    yaxis=dict(categoryorder="total ascending", tickfont=dict(size=11)),
+                    margin=dict(l=4, r=40, t=4, b=4),
+                    bargap=0.38,
                 )
                 st.plotly_chart(fig_lb, use_container_width=True)
 
         with ov2:
-            st.markdown("**NPS nach Behandlungsart**")
+            st.markdown(f"<div style='font-size:13px;font-weight:600;color:{T['text_h']};margin-bottom:12px;'>NPS nach Behandlungsart</div>", unsafe_allow_html=True)
             seg_col = "Property - product_segment"
             if seg_col in df_zen.columns:
                 seg_list = []
                 for seg in df_zen[seg_col].dropna().unique():
-                    d   = df_zen[df_zen[seg_col] == seg]
-                    nps = calc_nps(d) or calc_nps_from_score(d)
-                    if nps is not None:
-                        seg_list.append({"Behandlung": seg, "NPS": nps, "n": len(d)})
+                    dsg  = df_zen[df_zen[seg_col] == seg]
+                    npsv = get_nps(dsg)
+                    if npsv is not None:
+                        seg_list.append({"Behandlung": seg, "NPS": npsv, "n": len(dsg)})
                 if seg_list:
-                    df_seg = pd.DataFrame(seg_list).sort_values("NPS", ascending=False)
-                    fig_s = px.bar(
-                        df_seg, x="Behandlung", y="NPS",
-                        color="NPS",
-                        color_continuous_scale=[[0.0, C_CHART_RED], [0.5, C_HONEY], [1.0, C_CHART_GREEN]],
-                        range_color=[-100, 100], text="NPS",
-                        hover_data={"n": True},
+                    df_sg = pd.DataFrame(seg_list).sort_values("NPS", ascending=False)
+                    bc    = [C_MINT if v >= 30 else (C_HONEY if v >= 0 else C_RED) for v in df_sg["NPS"]]
+                    fig_sg = go.Figure(go.Bar(
+                        x=df_sg["Behandlung"], y=df_sg["NPS"],
+                        marker=dict(color=bc, cornerradius=6, line=dict(width=0)),
+                        text=df_sg["NPS"].apply(lambda v: f"{v:.0f}"),
+                        textposition="outside",
+                        textfont=dict(color=PFG, size=12),
+                        hovertemplate="<b>%{x}</b><br>NPS: %{y:.0f}<extra></extra>",
+                    ))
+                    fig_sg.add_hline(y=0, line_color=T["divider"], line_width=1.5)
+                    fig_sg.update_layout(
+                        **plotly_base(),
+                        yaxis=dict(gridcolor=PGRD, zeroline=False),
+                        xaxis=dict(gridcolor="rgba(0,0,0,0)", zeroline=False),
+                        bargap=0.42,
                     )
-                    fig_s.update_traces(texttemplate="%{text:.0f}", textposition="outside")
-                    fig_s.add_hline(y=0, line_color=T["grid"])
-                    fig_s.update_layout(
-                        plot_bgcolor=PLOT_BG, paper_bgcolor=PLOT_BG,
-                        font=dict(color=PLOT_FONT, family="Jost"),
-                        coloraxis_showscale=False,
-                        yaxis=dict(gridcolor=PLOT_GRID, zeroline=False),
-                        margin=dict(l=10, r=10, t=10, b=10),
-                    )
-                    st.plotly_chart(fig_s, use_container_width=True)
+                    st.plotly_chart(fig_sg, use_container_width=True)
+            else:
+                st.caption("Spalte 'Property - product_segment' nicht vorhanden.")
 
-        # NPS Donut
+        # Donut
         if "score_type" in df_zen.columns:
-            st.subheader("NPS-Zusammensetzung")
-            type_c = df_zen["score_type"].value_counts().reset_index()
-            type_c.columns = ["Typ", "Anzahl"]
-            fig_d = px.pie(
-                type_c, values="Anzahl", names="Typ", hole=0.65,
-                color="Typ",
-                color_discrete_map={"promoter": C_CHART_GREEN, "passive": C_HONEY, "detractor": C_CHART_RED},
-            )
-            fig_d.update_traces(
-                textfont_size=13,
-                marker=dict(line=dict(color=T["bg"], width=3)),
-            )
-            if nps_gesamt is not None:
+            st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+            section_title("NPS-Zusammensetzung", "Alle ausgewählten Studios")
+            tc = df_zen["score_type"].value_counts().reset_index()
+            tc.columns = ["Typ", "Anzahl"]
+            color_map = {"promoter": C_MINT, "passive": C_HONEY, "detractor": C_RED}
+            fig_d = go.Figure(go.Pie(
+                labels=tc["Typ"],
+                values=tc["Anzahl"],
+                hole=0.68,
+                marker=dict(
+                    colors=[color_map.get(t, C_STONE) for t in tc["Typ"]],
+                    line=dict(color=T["app_bg"], width=3),
+                ),
+                textfont=dict(size=13),
+                hovertemplate="<b>%{label}</b><br>%{value} (%{percent})<extra></extra>",
+            ))
+            if nps_ges is not None:
                 fig_d.add_annotation(
-                    text=f"NPS<br><b>{nps_gesamt:.0f}</b>",
-                    x=0.5, y=0.5,
-                    font=dict(size=20, color=T["text_h"], family="Jost"),
-                    showarrow=False,
+                    text=f"<b>{nps_ges:.0f}</b>",
+                    x=0.5, y=0.55, showarrow=False,
+                    font=dict(size=26, color=T["text_h"], family="DM Sans"),
+                )
+                fig_d.add_annotation(
+                    text="NPS",
+                    x=0.5, y=0.38, showarrow=False,
+                    font=dict(size=12, color=T["text_muted"], family="DM Sans"),
                 )
             fig_d.update_layout(
-                paper_bgcolor=PLOT_BG, font=dict(color=PLOT_FONT, family="Jost"),
-                legend=dict(orientation="h", yanchor="bottom", y=-0.18, font=dict(size=12)),
-                margin=dict(t=10, b=10),
+                **plotly_base(),
+                legend=dict(orientation="h", yanchor="bottom", y=-0.18,
+                            font=dict(size=12), itemgap=24),
+                margin=dict(t=10, b=10, l=10, r=10),
+                height=280,
             )
             _, dc, _ = st.columns([1, 2, 1])
             with dc:
                 st.plotly_chart(fig_d, use_container_width=True)
 
         # NPS-Ranking
-        st.subheader("NPS-Ranking aller Studios")
-        nps_ranking = []
-        for code in codes_mit_zen:
-            d     = df_zen[df_zen["Property - studio"] == code]
-            nps_v = calc_nps(d) or calc_nps_from_score(d)
-            g_r   = df_current[df_current["Studiokürzel"] == code]["Rating"].values
-            if nps_v is not None:
-                nps_ranking.append({
+        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+        section_title("NPS-Ranking", "Studios mit Zenloop-Daten")
+        nps_rows = []
+        for code in codes_zen:
+            d   = df_zen[df_zen["Property - studio"] == code]
+            nv  = get_nps(d)
+            gr  = df_curr[df_curr["Studiokürzel"] == code]["Rating"].values
+            if nv is not None:
+                nps_rows.append({
                     "Studio":    code,
-                    "NPS":       nps_v,
-                    "Google ⭐":  round(g_r[0], 2) if len(g_r) > 0 else None,
+                    "NPS":       nv,
+                    "Bewertung": nps_label(nv),
+                    "Google ⭐":  round(gr[0], 2) if len(gr) > 0 else None,
                     "Antworten": len(d),
                 })
-        if nps_ranking:
-            df_nps_rank = (
-                pd.DataFrame(nps_ranking)
-                .sort_values("NPS", ascending=False)
-                .reset_index(drop=True)
-            )
-            df_nps_rank.insert(0, "Rang", range(1, len(df_nps_rank) + 1))
-            st.dataframe(df_nps_rank, use_container_width=True, hide_index=True)
+        if nps_rows:
+            df_nr = pd.DataFrame(nps_rows).sort_values("NPS", ascending=False).reset_index(drop=True)
+            df_nr.insert(0, "Rang", [f"#{i}" for i in range(1, len(df_nr) + 1)])
+            st.dataframe(df_nr, use_container_width=True, hide_index=True)
 
 
-# ── TAB 3: MANAGEMENT-BERICHT ────────────────
+# ──────────────────────────────────────────────────────────────────
+# TAB 3 · MANAGEMENT-BERICHT
+# ──────────────────────────────────────────────────────────────────
 with tab3:
-    st.subheader("📝 Intelligenter Management-Bericht")
-    st.caption(
-        "Automatisch aus echten Daten generiert – mit Trend-Analyse, "
-        "Kundenfeedback-Insights und konkreten Handlungsempfehlungen."
+    section_title(
+        "Management-Bericht",
+        "Automatisch aus echten Daten · Trend-Analyse, Insights und Handlungsempfehlungen"
     )
 
-    studios_sorted = df_current.sort_values("Rating", ascending=False)
-    top3           = studios_sorted.head(3)
-    all_top_labels = get_top_labels(df_zen, 5)
-    all_neg_labels = get_neg_labels(df_zen, 5)
+    studios_s  = df_curr.sort_values("Rating", ascending=False)
+    top3       = studios_s.head(3)
+    atl        = top_labels(df_zen, 5)
+    anl        = neg_labels(df_zen, 5)
 
     verbessert, verschlechtert = [], []
-    if not df_vormonat.empty:
-        vm_ratings = df_vormonat.set_index("Studiokürzel")["Rating"]
-        for _, row in df_current.iterrows():
-            old = vm_ratings.get(row["Studiokürzel"])
+    if not df_vm.empty:
+        vm_r = df_vm.set_index("Studiokürzel")["Rating"]
+        for _, row in df_curr.iterrows():
+            old = vm_r.get(row["Studiokürzel"])
             if old is not None:
-                d = row["Rating"] - old
-                if   d >=  0.1: verbessert.append(f"{row['Studiokürzel']} (+{d:.1f})")
-                elif d <= -0.1: verschlechtert.append(f"{row['Studiokürzel']} ({d:.1f})")
+                dv = row["Rating"] - old
+                if   dv >=  0.1: verbessert.append(f"{row['Studiokürzel']} (+{dv:.1f})")
+                elif dv <= -0.1: verschlechtert.append(f"{row['Studiokürzel']} ({dv:.1f})")
 
     jetzt = datetime.now().strftime("%d.%m.%Y %H:%M")
-    sep1  = "═" * 52
-    sep2  = "─" * 52
+    s1 = "═" * 56
+    s2 = "─" * 56
 
-    def fmt_nps(v: Optional[float]) -> str:
-        return f"{v:.0f} ({nps_bewertung(v)})" if v is not None else "keine Daten"
-
-    zeilen = [
+    lines = [
         "SENZERA MANAGEMENT-BERICHT",
-        f"Region : {sel_rl}",
-        f"Monat  : {sel_monat}",
-        f"Erstellt: {jetzt}",
-        sep1, "",
-        "I. ÜBERBLICK", sep2,
-        f"  Google Ø-Rating     : {avg_rating:.2f} ⭐"
-        + (f"  ({delta_rating:+.2f} ggü. {vormonat})" if delta_rating is not None else ""),
-        f"  Neue Rezensionen    : {total_reviews}",
-        f"  Zenloop NPS         : {fmt_nps(nps_gesamt)}",
-        f"  Positive Stimmung   : {f'{sentiment_pct:.0f}%' if sentiment_pct else 'keine Daten'}"
-        + (f"  ({total_responses} Antworten)" if total_responses > 0 else ""),
+        f"Region    : {sel_rl}",
+        f"Monat     : {sel_monat}",
+        f"Erstellt  : {jetzt}",
+        s1, "",
+        "I.  ÜBERBLICK", s2,
+        f"  Google Ø-Rating          : {avg_rating:.2f} ⭐"
+        + (f"   ({delta_r:+.2f} ggü. {vormonat})" if delta_r is not None else ""),
+        f"  Neue Rezensionen         : {new_rev}",
+        f"  Google Rez. Gesamt       : {total_rev}",
+        f"  Zenloop NPS              : {fmt_n(nps_ges)}",
+        f"  Positive Stimmung        : {f'{sentiment:.0f}%' if sentiment else 'keine Daten'}"
+        + (f"   ({n_zen} Antworten)" if n_zen > 0 else ""),
         "",
     ]
 
-    if   avg_rating >= RATING_GOOD:     zeilen.append("  💚 Gesamtbewertung: STARK – Region liegt über Zielmarke.")
-    elif avg_rating >= RATING_CRITICAL: zeilen.append("  🟡 Gesamtbewertung: SOLIDE – Einzelne Studios brauchen Aufmerksamkeit.")
-    else:                               zeilen.append("  🔴 Gesamtbewertung: KRITISCH – Sofortmaßnahmen erforderlich!")
+    if   avg_rating >= RATING_GOOD: lines.append("  💚 Gesamtbewertung: STARK – Region über Zielmarke.")
+    elif avg_rating >= RATING_MIN:  lines.append("  🟡 Gesamtbewertung: SOLIDE – Einzelne Studios brauchen Aufmerksamkeit.")
+    else:                           lines.append("  🔴 Gesamtbewertung: KRITISCH – Sofortmaßnahmen erforderlich!")
 
-    zeilen += ["", "II. TREND", sep2]
+    lines += ["", "II.  TREND", s2]
     if verbessert:
-        zeilen.append(f"  📈 Verbessert vs. {vormonat}:     {', '.join(verbessert)}")
+        lines.append(f"  📈 Verbessert vs. {vormonat}     : {', '.join(verbessert)}")
     if verschlechtert:
-        zeilen.append(f"  📉 Verschlechtert vs. {vormonat}: {', '.join(verschlechtert)}")
+        lines.append(f"  📉 Verschlechtert vs. {vormonat} : {', '.join(verschlechtert)}")
     if not verbessert and not verschlechtert:
-        zeilen.append("  ➡ Nur ein Monat verfügbar – kein Trendvergleich möglich.")
+        lines.append("  ➡  Nur ein Monat verfügbar – kein Trendvergleich möglich.")
 
-    zeilen += ["", "III. STUDIO-STATUS", sep2]
-    for _, row in studios_sorted.iterrows():
-        code   = row["Studiokürzel"]
-        rating = row["Rating"]
-        rev    = row["NewReviews"]
-        zen_s  = df_zen[df_zen["Property - studio"] == code] if not df_zen.empty else pd.DataFrame()
-        s_nps  = calc_nps(zen_s)
-        nps_s  = f" | NPS: {s_nps:.0f}" if s_nps is not None else ""
-        krit_s = "  → KRITISCH!" if rating < RATING_CRITICAL else ""
-        zeilen.append(f"  {rating_emoji(rating)}  {code:<5} {rating:.2f} ⭐  (+{rev} Rez.){nps_s}{krit_s}")
+    lines += ["", "III. STUDIO-STATUS", s2]
+    for _, row in studios_s.iterrows():
+        code  = row["Studiokürzel"]
+        zs    = df_zen[df_zen["Property - studio"] == code] if not df_zen.empty else pd.DataFrame()
+        sn    = get_nps(zs)
+        nstr  = f" | NPS: {sn:.0f}" if sn is not None else ""
+        kstr  = "  ← KRITISCH!" if row["Rating"] < RATING_MIN else ""
+        lines.append(f"  {rating_icon(row['Rating'])}  {code:<6} {row['Rating']:.2f} ⭐  (+{row['NewReviews']} Rez.){nstr}{kstr}")
 
-    zeilen += ["", "IV. HIGHLIGHTS", sep2, "  🏆 TOP STUDIOS:"]
+    lines += ["", "IV.  HIGHLIGHTS", s2, "  🏆 TOP-STUDIOS:"]
     for _, row in top3.iterrows():
-        zeilen.append(f"      • {row['Studiokürzel']} ({row['Stadt']}): {row['Rating']:.2f} ⭐")
+        lines.append(f"      • {row['Studiokürzel']} ({row['Stadt']}): {row['Rating']:.2f} ⭐")
 
-    if n_critical > 0:
-        zeilen += ["", "  🚨 HANDLUNGSBEDARF:"]
-        for _, row in critical_studios.iterrows():
-            code  = row["Studiokürzel"]
-            zen_s = df_zen[df_zen["Property - studio"] == code] if not df_zen.empty else pd.DataFrame()
-            neg   = get_neg_labels(zen_s, 3)
-            zeilen.append(f"      • {code} ({row['Stadt']}): {row['Rating']:.2f} ⭐")
-            if not neg.empty:
-                zeilen.append(f"        Kundenkritik: {', '.join(neg.index.tolist())}")
-        zeilen += [
+    if n_crit > 0:
+        lines += ["", "  🚨 HANDLUNGSBEDARF:"]
+        for _, row in crit.iterrows():
+            code = row["Studiokürzel"]
+            zs   = df_zen[df_zen["Property - studio"] == code] if not df_zen.empty else pd.DataFrame()
+            nl   = neg_labels(zs, 3)
+            lines.append(f"      • {code} ({row['Stadt']}): {row['Rating']:.2f} ⭐")
+            if not nl.empty:
+                lines.append(f"        Kundenkritik: {', '.join(nl.index.tolist())}")
+        lines += [
             "", "  Empfohlene Maßnahmen:",
-            "      1. Sofortgespräch mit Studioleitung (diese Woche)",
-            "      2. Google-Rezensionen der letzten 30 Tage analysieren",
-            "      3. Konkrete Verbesserungsmaßnahmen festlegen (Frist: 2 Wochen)",
-            "      4. Wöchentliches Follow-up einplanen",
+            "      1.  Sofortgespräch mit Studioleitung (diese Woche)",
+            "      2.  Google-Rezensionen der letzten 30 Tage analysieren",
+            "      3.  Konkrete Maßnahmen festlegen (Frist: 2 Wochen)",
+            "      4.  Wöchentliches Follow-up einplanen",
         ]
 
-    if not all_top_labels.empty or not all_neg_labels.empty:
-        zeilen += ["", "V. KUNDENFEEDBACK-INSIGHTS", sep2]
-        if not all_top_labels.empty:
-            zeilen.append("  📌 Meistgenannte Themen:")
-            for lbl, cnt in all_top_labels.items():
-                zeilen.append(f"      • {lbl} ({cnt}×)")
-        if not all_neg_labels.empty:
-            zeilen += ["", "  ⚠️  Hauptkritikpunkte (Detraktoren):"]
-            for lbl, cnt in all_neg_labels.items():
-                zeilen.append(f"      • {lbl} ({cnt}×)")
-            zeilen.append("  → Diese Themen für nächstes Team-Meeting vorbereiten.")
+    if not atl.empty or not anl.empty:
+        lines += ["", "V.  KUNDENFEEDBACK-INSIGHTS", s2]
+        if not atl.empty:
+            lines.append("  📌 Meistgenannte Themen:")
+            for lbl, cnt in atl.items():
+                lines.append(f"      • {lbl} ({cnt}×)")
+        if not anl.empty:
+            lines += ["", "  ⚠️  Hauptkritikpunkte (Detraktoren):"]
+            for lbl, cnt in anl.items():
+                lines.append(f"      • {lbl} ({cnt}×)")
+            lines.append("  →  Für nächstes Team-Meeting priorisieren.")
 
-    zeilen += ["", sep1, f"Senzera Performance Hub  ·  {jetzt}", sep1]
-    bericht = "\n".join(zeilen)
+    lines += ["", s1, f"Senzera Performance Hub v4  ·  {jetzt}", s1]
+    bericht = "\n".join(lines)
 
-    st.text_area("Berichtstext:", value=bericht, height=520)
+    st.text_area("", value=bericht, height=540, label_visibility="collapsed")
 
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
     dl1, dl2 = st.columns(2)
     with dl1:
         st.download_button(
@@ -1000,20 +1499,21 @@ with tab3:
             mime="text/plain", use_container_width=True,
         )
     with dl2:
-        snap_cols = [c for c in ["Studiokürzel", "Stadt", "Rating", "NewReviews", "NPS"] if c in df_current.columns]
+        snap = [c for c in ["Studiokürzel", "Stadt", "Rating", "NewReviews", "TotalReviews", "NPS"]
+                if c in df_curr.columns]
         st.download_button(
             "📥 Daten-Snapshot (CSV)",
-            data=df_current[snap_cols].to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
+            data=df_curr[snap].to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
             file_name=f"Senzera_Snapshot_{sel_rl}_{sel_monat}.csv",
             mime="text/csv", use_container_width=True,
         )
 
 
-# ══════════════════════════════════════════════
-# 12. EXPORT & FOOTER
-# ══════════════════════════════════════════════
-
+# ══════════════════════════════════════════════════════════════════
+# 13 · EXPORT & FOOTER
+# ══════════════════════════════════════════════════════════════════
 st.divider()
+section_title("Daten-Export")
 e1, e2 = st.columns(2)
 with e1:
     st.download_button(
@@ -1031,18 +1531,27 @@ with e2:
             mime="text/csv", use_container_width=True,
         )
     else:
-        st.button("📥 Zenloop (keine Daten)", disabled=True, use_container_width=True)
+        st.button("📥 Zenloop – keine Daten", disabled=True, use_container_width=True)
 
-# Senzera Footer
 st.markdown(
-    f"""
-    <div style="text-align:center;padding:24px 0 8px;
-                font-size:11px;letter-spacing:0.5px;color:{T['text_muted']};">
-        <span style="color:{C_ORANGE};font-weight:600;">🌸 senzera</span>
-        &nbsp;·&nbsp; Performance Hub v3
-        &nbsp;·&nbsp; Alle Daten werden lokal verarbeitet
-        &nbsp;·&nbsp; Keine externe Übertragung
-    </div>
-    """,
+    f"""<div style='display:flex;align-items:center;justify-content:space-between;
+                    padding:24px 0 10px;margin-top:8px;
+                    border-top:1px solid {T["divider"]};'>
+        <div style='display:flex;align-items:center;gap:10px;'>
+            <div style='width:30px;height:30px;background:{C_ORANGE};border-radius:9px;
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:15px;box-shadow:0 3px 10px rgba(232,98,10,0.3);'>🌸</div>
+            <div>
+                <div style='font-size:12.5px;font-weight:600;color:{T["text_h"]};'>
+                    senzera Performance Hub
+                </div>
+                <div style='font-size:10px;color:{T["text_muted"]};'>v4 · waxing & beauty</div>
+            </div>
+        </div>
+        <div style='font-size:11px;color:{T["text_muted"]};text-align:right;line-height:1.6;'>
+            Alle Daten lokal verarbeitet<br>
+            <span style='color:{C_ORANGE};font-weight:600;'>Keine externe Übertragung</span>
+        </div>
+    </div>""",
     unsafe_allow_html=True,
 )
