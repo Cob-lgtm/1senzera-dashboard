@@ -197,6 +197,14 @@ div, span, p, label, input, select, textarea, button {{
 /* Toolbar: nur Deploy-Button und Menu ausblenden, NICHT den Sidebar-Toggle */
 [data-testid="stToolbar"] [data-testid="baseButton-header"] {{ display: none !important; }}
 [data-testid="stDecoration"] {{ display: none !important; }}
+/* Sidebar-Toggle-Button Text ausblenden, nur Icon behalten */
+[data-testid="stSidebarCollapseButton"] span {{ display: none !important; }}
+[data-testid="collapsedControl"] span {{ display: none !important; }}
+button[data-testid="stBaseButton-headerNoPadding"] span {{ display: none !important; }}
+/* keyboard shortcut hint verstecken */
+[data-testid="stSidebarCollapse"] {{ display: none !important; }}
+.st-emotion-cache-1egp75f {{ display: none !important; }}
+kbd {{ display: none !important; }}
 /* Streamlit-Branding im Footer ausblenden */
 footer {{ visibility: hidden !important; }}
 footer::before {{ visibility: hidden !important; }}
@@ -845,13 +853,17 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
-    # Studio-Auswahl mit Alle/Keine
+    # Studio-Auswahl – Label mit "Alle zurücksetzen" Link
     studio_opts = sorted(df_rl["Studio_Name"].unique().tolist())
-    sa, sb = st.columns(2)
-    if sa.button("Alle", use_container_width=True):
-        st.session_state.sel_studios = studio_opts
-    if sb.button("Keine", use_container_width=True):
-        st.session_state.sel_studios = []
+
+    st.markdown(
+        f"<div style='display:flex;justify-content:space-between;align-items:center;"
+        f"margin-bottom:6px;'>"
+        f"<span style='font-size:10px;font-weight:700;letter-spacing:1.2px;"
+        f"text-transform:uppercase;color:{T['text_muted']};'>Studios</span>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
     default_sel = st.session_state.get("sel_studios", studio_opts)
     default_sel = [s for s in default_sel if s in studio_opts]
@@ -862,7 +874,7 @@ with st.sidebar:
         "Studios",
         studio_opts,
         default=default_sel,
-        label_visibility="visible",
+        label_visibility="collapsed",
     )
     st.session_state.sel_studios = sel_studios
 
