@@ -1080,7 +1080,7 @@ with tab1:
         fig_rk = go.Figure(go.Bar(
             x=df_rk["Rating"], y=df_rk["Studiokürzel"],
             orientation="h",
-            marker=dict(color=bar_c, cornerradius=6, line=dict(width=0)),
+            marker=dict(color=bar_c, line=dict(width=0)),
             text=df_rk["Rating"].apply(lambda r: f"{r:.2f}"),
             textposition="outside",
             textfont=dict(color=PFG, size=12),
@@ -1151,7 +1151,7 @@ with tab1:
             x=rev_t["Monat"], y=rev_t["NewReviews"],
             marker=dict(
                 color=[C_ORANGE if m == sel_monat else C_STONE for m in rev_t["Monat"]],
-                cornerradius=6, line=dict(width=0),
+                line=dict(width=0),
             ),
             text=rev_t["NewReviews"], textposition="outside",
             textfont=dict(color=PFG, size=11),
@@ -1292,7 +1292,7 @@ with tab2:
                 fig_lb = go.Figure(go.Bar(
                     x=all_lb["Anzahl"], y=all_lb["Thema"],
                     orientation="h",
-                    marker=dict(color=ci[:len(all_lb)], cornerradius=5, line=dict(width=0)),
+                    marker=dict(color=ci[:len(all_lb)], line=dict(width=0)),
                     text=all_lb["Anzahl"], textposition="outside",
                     textfont=dict(color=PFG, size=11),
                     hovertemplate="<b>%{y}</b><br>%{x}×<extra></extra>",
@@ -1321,7 +1321,7 @@ with tab2:
                     bc    = [C_MINT if v >= 30 else (C_HONEY if v >= 0 else C_RED) for v in df_sg["NPS"]]
                     fig_sg = go.Figure(go.Bar(
                         x=df_sg["Behandlung"], y=df_sg["NPS"],
-                        marker=dict(color=bc, cornerradius=6, line=dict(width=0)),
+                        marker=dict(color=bc, line=dict(width=0)),
                         text=df_sg["NPS"].apply(lambda v: f"{v:.0f}"),
                         textposition="outside",
                         textfont=dict(color=PFG, size=12),
@@ -1372,7 +1372,7 @@ with tab2:
                 font=dict(color=PFG, family="DM Sans", size=12),
                 showlegend=True,
                 legend=dict(orientation="h", yanchor="bottom", y=-0.18,
-                            font=dict(size=12), itemgap=24),
+                            font=dict(size=12)),
                 margin=dict(t=10, b=10, l=10, r=10),
                 height=280,
             )
@@ -1780,7 +1780,7 @@ with tab4:
                 x=df_rank_pf[pf_monat],
                 y=df_rank_pf["Name"],
                 orientation="h",
-                marker=dict(color=bar_colors_pf, cornerradius=5, line=dict(width=0)),
+                marker=dict(color=bar_colors_pf, line=dict(width=0)),
                 text=df_rank_pf[pf_monat].apply(lambda v: f"{v:,.0f} €".replace(",", ".")),
                 textposition="outside",
                 textfont=dict(color=PFG, size=11),
@@ -1825,7 +1825,7 @@ with tab4:
                         x=df_kr_m[kr_col],
                         y=df_kr_m["Name"],
                         orientation="h",
-                        marker=dict(color=k_colors, cornerradius=5, line=dict(width=0)),
+                        marker=dict(color=k_colors, line=dict(width=0)),
                         text=df_kr_m[kr_col].apply(lambda v: f"{int(v)} T"),
                         textposition="outside",
                         textfont=dict(color=PFG, size=11),
@@ -1898,7 +1898,7 @@ with tab4:
                 font=dict(color=PFG, family="DM Sans", size=12),
                 showlegend=True,
                 legend=dict(orientation="h", yanchor="bottom", y=1.02,
-                            font=dict(size=12), itemgap=16),
+                            font=dict(size=12)),
                 yaxis=dict(
                     title="Ø Umsatz (€)",
                     gridcolor=PGRD, zeroline=False,
