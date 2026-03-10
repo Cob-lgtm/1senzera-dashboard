@@ -960,16 +960,17 @@ with hc1:
         badge(sel_monat, T["card_bg"], T["text_second"]),
         badge(sel_rl,    T["card_bg"], T["text_second"]),
     ])
+    studio_s   = "s" if n_sel != 1 else ""
+    vgl_html   = f"&nbsp;·&nbsp; Vergleich zu <b>{vormonat}</b>" if vormonat else ""
     st.markdown(
         f"""<div style='margin-bottom:18px;'>
             <div style='display:flex;align-items:center;gap:7px;margin-bottom:10px;flex-wrap:wrap;'>
                 {badges_html}
             </div>
             <h1 style='margin:0 0 6px;'>Studio-Performance</h1>
-            <p style='font-size:14px;color:{T["text_muted"]};margin:0;font-weight:400;'>
-                {n_sel} Studio{'s' if n_sel != 1 else ''} aktiv
-                {"&nbsp;·&nbsp; Vergleich zu <b>" + vormonat + "</b>" if vormonat else ""}
-            </p>
+            <div style='font-size:14px;color:{T["text_muted"]};margin:0;font-weight:400;'>
+                {n_sel} Studio{studio_s} aktiv {vgl_html}
+            </div>
         </div>""",
         unsafe_allow_html=True,
     )
