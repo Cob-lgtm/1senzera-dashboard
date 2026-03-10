@@ -6,6 +6,8 @@ Dateien:  Senzera_Dashboard_Data.csv  +  Zenloop_Antworten.csv
 """
 
 from __future__ import annotations
+import base64
+import json
 import os
 from datetime import datetime
 from typing import Optional
@@ -13,6 +15,15 @@ from typing import Optional
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+
+# Optionaler Import für Performer-Tab (cryptography)
+try:
+    from cryptography.fernet import Fernet, InvalidToken
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    CRYPTO_OK = True
+except ImportError:
+    CRYPTO_OK = False
 
 # ══════════════════════════════════════════════════════════════════
 # 1 · PAGE CONFIG
@@ -1042,10 +1053,11 @@ st.divider()
 # ══════════════════════════════════════════════════════════════════
 # 12 · TABS
 # ══════════════════════════════════════════════════════════════════
-tab1, tab2, tab3 = st.tabs([
+tab1, tab2, tab3, tab4 = st.tabs([
     "  📊  Performance & Trends  ",
     "  💙  Zenloop Deep-Dive  ",
     "  📝  Management-Bericht  ",
+    "  🔒  Team-Performer  ",
 ])
 
 
@@ -1507,6 +1519,436 @@ with tab3:
             file_name=f"Senzera_Snapshot_{sel_rl}_{sel_monat}.csv",
             mime="text/csv", use_container_width=True,
         )
+
+
+# ──────────────────────────────────────────────────────────────────
+# TAB 4 · TEAM-PERFORMER (PASSWORTGESCHÜTZT)
+# ──────────────────────────────────────────────────────────────────
+PERFORMER_BIN = "performer_encrypted.bin"
+
+def _derive_key(password: str, salt: bytes) -> bytes:
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=480_000,
+    )
+    return base64.urlsafe_b64encode(kdf.derive(password.encode("utf-8")))
+
+
+def _decrypt_performer(password: str) -> dict:
+    """Entschlüsselt performer_encrypted.bin. Wirft ValueError bei Fehler."""
+    with open(PERFORMER_BIN, "rb") as f:
+        raw = f.read()
+    salt      = raw[:16]
+    encrypted = raw[16:]
+    key       = _derive_key(password, salt)
+    fernet    = Fernet(key)
+    try:
+        data = fernet.decrypt(encrypted)
+    except (InvalidToken, Exception):
+        raise ValueError("Falsches Passwort")
+    return json.loads(data.decode("utf-8"))
+
+
+def _performer_kpi_card(title: str, value: str, sub: str = "", color: str = None) -> None:
+    c = color or C_ORANGE
+    st.markdown(
+        f"""<div style='background:{T["card_bg"]};border:1px solid {T["card_border"]};
+                        border-radius:16px;padding:18px 20px;
+                        box-shadow:{T["card_shadow"]};'>
+            <div style='font-size:10px;font-weight:700;letter-spacing:1.3px;
+                        text-transform:uppercase;color:{T["text_muted"]};
+                        margin-bottom:6px;'>{title}</div>
+            <div style='font-size:1.7rem;font-weight:800;color:{T["text_h"]};
+                        letter-spacing:-0.5px;line-height:1.1;'>{value}</div>
+            <div style='font-size:11.5px;color:{T["text_muted"]};margin-top:5px;'>{sub}</div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+
+with tab4:
+    # ── Prüfe ob cryptography installiert ist ───────────────────
+    if not CRYPTO_OK:
+        st.error("❌ Bibliothek fehlt: `pip install cryptography`")
+        st.stop()
+
+    # ── Prüfe ob verschlüsselte Datei existiert ──────────────────
+    if not os.path.exists(PERFORMER_BIN):
+        st.warning(
+            f"⚠️ Verschlüsselte Datei **'{PERFORMER_BIN}'** nicht gefunden.\n\n"
+            "Bitte zuerst das Update-Skript ausführen:\n"
+            "```\npython performer_update.py\n```"
+        )
+        st.stop()
+
+    # ── Login / Session State ────────────────────────────────────
+    if "performer_unlocked" not in st.session_state:
+        st.session_state.performer_unlocked = False
+    if "performer_data" not in st.session_state:
+        st.session_state.performer_data = None
+
+    # ── LOCK SCREEN ──────────────────────────────────────────────
+    if not st.session_state.performer_unlocked:
+
+        # Datei-Info
+        file_stat = os.stat(PERFORMER_BIN)
+        file_date = datetime.fromtimestamp(file_stat.st_mtime).strftime("%d.%m.%Y %H:%M")
+
+        _, lock_col, _ = st.columns([1, 2, 1])
+        with lock_col:
+            st.markdown(
+                f"""<div style='text-align:center;padding:40px 32px;
+                                background:{T["card_bg"]};
+                                border:1px solid {T["card_border"]};
+                                border-radius:20px;
+                                box-shadow:{T["card_shadow"]};
+                                margin-top:24px;'>
+                    <div style='font-size:48px;margin-bottom:16px;'>🔐</div>
+                    <div style='font-family:"Instrument Serif",serif;
+                                font-size:22px;color:{T["text_h"]};
+                                margin-bottom:6px;'>Team-Performer</div>
+                    <div style='font-size:13px;color:{T["text_muted"]};
+                                margin-bottom:6px;'>Geschützter Bereich</div>
+                    <div style='font-size:11px;color:{T["text_muted"]};
+                                padding:6px 14px;background:{T["app_bg"]};
+                                border-radius:8px;display:inline-block;
+                                margin-bottom:24px;'>
+                        📁 Datei vom {file_date}
+                    </div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
+            pw_input = st.text_input(
+                "Passwort",
+                type="password",
+                placeholder="Passwort eingeben …",
+                label_visibility="collapsed",
+            )
+
+            _, btn_col, _ = st.columns([1, 2, 1])
+            with btn_col:
+                unlock_btn = st.button("🔓 Entsperren", use_container_width=True)
+
+            if unlock_btn:
+                if not pw_input.strip():
+                    st.error("Bitte Passwort eingeben.")
+                else:
+                    with st.spinner("Wird entschlüsselt …"):
+                        try:
+                            data = _decrypt_performer(pw_input.strip())
+                            st.session_state.performer_data    = data
+                            st.session_state.performer_unlocked = True
+                            st.rerun()
+                        except ValueError:
+                            st.error("❌ Falsches Passwort. Bitte erneut versuchen.")
+                        except Exception as e:
+                            st.error(f"❌ Fehler beim Entschlüsseln: {e}")
+
+    # ── ENTSPERRT · DASHBOARD ────────────────────────────────────
+    else:
+        data      = st.session_state.performer_data
+        df_pf_raw = pd.DataFrame(data["performer"])
+        df_kr_raw = pd.DataFrame(data["krankentage"])
+        monate    = data.get("monate", [])
+
+        gen_time  = data.get("generated", "")[:10]
+
+        # ── Header ───────────────────────────────────────────────
+        lock_h, lock_info = st.columns([4, 1])
+        with lock_h:
+            section_title(
+                "Team-Performer",
+                f"Umsatz- & Krankentage-Analyse · Datenstand: {gen_time}"
+            )
+        with lock_info:
+            if st.button("🔒 Sperren", use_container_width=True):
+                st.session_state.performer_unlocked = False
+                st.session_state.performer_data     = None
+                st.rerun()
+
+        # ── Filter: RL → Teams ───────────────────────────────────
+        # Nutzt sel_rl aus der Sidebar (bereits gefiltert nach RL)
+        # Hier: zusätzlich nach Team filtern (RL-Kürzel = Team-Kürzel)
+        if sel_rl != "Alle":
+            # Teams ermitteln die zur gewählten RL gehören
+            # Annahme: "Team" in Performer = Kürzel der RL
+            # Kürzel der Studios in df_curr nutzen
+            rl_kuerzel = df_curr["Studiokürzel"].unique().tolist()
+            df_pf = df_pf_raw[df_pf_raw["Kürzel"].isin(rl_kuerzel)].copy()
+            df_kr = df_kr_raw[df_kr_raw["Kürzel"].isin(rl_kuerzel)].copy()
+            if df_pf.empty:
+                # Fallback: Team-Spalte direkt nutzen
+                teams_in_rl = df_pf_raw[
+                    df_pf_raw["Standort"].str.contains(
+                        "|".join([k.split()[0] for k in rl_kuerzel[:3]]), na=False, case=False
+                    )
+                ]["Team"].unique()
+                df_pf = df_pf_raw[df_pf_raw["Team"].isin(teams_in_rl)].copy()
+                df_kr = df_kr_raw[df_kr_raw["Team"].isin(teams_in_rl)].copy()
+        else:
+            df_pf = df_pf_raw.copy()
+            df_kr = df_kr_raw.copy()
+
+        # Falls immer noch leer: alle zeigen
+        if df_pf.empty:
+            df_pf = df_pf_raw.copy()
+            df_kr = df_kr_raw.copy()
+
+        # Aktuelle Monatsspalte für Analyse
+        avail_months = [m for m in monate if m in df_pf.columns]
+        if not avail_months:
+            st.warning("Keine Monatsdaten verfügbar.")
+            st.stop()
+
+        # Monat-Picker für Performer-Tab
+        pf_monat = st.selectbox(
+            "Analysen-Monat",
+            avail_months,
+            index=len(avail_months) - 1,
+            key="pf_monat_sel",
+        )
+
+        # ── Top-Level KPIs ───────────────────────────────────────
+        df_pf_m = df_pf[df_pf[pf_monat].notna() & (df_pf[pf_monat] > 0)].copy()
+        df_pf_m = df_pf_m[df_pf_m["Position"].isin(["KM", "SL", "Standortleitung"])]
+
+        avg_umsatz    = df_pf_m[pf_monat].mean()  if not df_pf_m.empty else 0
+        top_row       = df_pf_m.loc[df_pf_m[pf_monat].idxmax()] if not df_pf_m.empty else None
+        n_aktiv       = len(df_pf_m)
+
+        # Krankentage aktueller Monat
+        kr_col        = pf_monat if pf_monat in df_kr.columns else None
+        avg_krank     = df_kr[kr_col].mean() if kr_col else 0
+        total_krank   = int(df_kr[kr_col].sum()) if kr_col else 0
+
+        pk1, pk2, pk3, pk4 = st.columns(4)
+        with pk1:
+            _performer_kpi_card(
+                "Ø Umsatz / Person",
+                f"{avg_umsatz:,.0f} €".replace(",", "."),
+                f"Monat {pf_monat}",
+            )
+        with pk2:
+            _performer_kpi_card(
+                "Top Performer",
+                top_row["Name"] if top_row is not None else "–",
+                f"{top_row[pf_monat]:,.0f} €".replace(",", ".") if top_row is not None else "",
+                color=C_HONEY,
+            )
+        with pk3:
+            _performer_kpi_card(
+                "Aktive MA (Vertrieb)",
+                str(n_aktiv),
+                f"mit Umsatz in {pf_monat}",
+            )
+        with pk4:
+            _performer_kpi_card(
+                "Ø Krankentage",
+                f"{avg_krank:.1f} Tage",
+                f"Gesamt {pf_monat}: {total_krank} Tage",
+                color=C_RED if avg_krank > 3 else C_MINT,
+            )
+
+        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+
+        # ── Ranking-Chart & Krankentage ──────────────────────────
+        ch1, ch2 = st.columns([3, 2], gap="large")
+
+        with ch1:
+            section_title(
+                f"Umsatz-Ranking – {pf_monat}",
+                "Alle Vertriebsmitarbeiterinnen mit positivem Umsatz"
+            )
+            df_rank_pf = df_pf_m.sort_values(pf_monat, ascending=True).tail(25)
+
+            # Farbe: Top-3 Orange, Rest Stone
+            n_bars = len(df_rank_pf)
+            bar_colors_pf = [C_ORANGE if i >= n_bars - 3 else C_STONE
+                             for i in range(n_bars)]
+
+            fig_pf = go.Figure(go.Bar(
+                x=df_rank_pf[pf_monat],
+                y=df_rank_pf["Name"],
+                orientation="h",
+                marker=dict(color=bar_colors_pf, cornerradius=5, line=dict(width=0)),
+                text=df_rank_pf[pf_monat].apply(lambda v: f"{v:,.0f} €".replace(",", ".")),
+                textposition="outside",
+                textfont=dict(color=PFG, size=11),
+                hovertemplate="<b>%{y}</b><br>%{x:,.0f} €<extra></extra>",
+            ))
+            # Ø-Linie
+            fig_pf.add_vline(
+                x=avg_umsatz, line_dash="dot", line_color=C_HONEY, line_width=2,
+                annotation=dict(
+                    text=f"Ø {avg_umsatz:,.0f}".replace(",", "."),
+                    font=dict(size=10, color=C_HONEY),
+                    bgcolor="rgba(0,0,0,0)",
+                ),
+            )
+            fig_pf.update_layout(
+                **plotly_base(),
+                xaxis=dict(gridcolor=PGRD, zeroline=False, tickformat=",.0f"),
+                yaxis=dict(tickfont=dict(size=10, color=T["text_second"])),
+                height=max(300, n_bars * 26),
+                margin=dict(l=4, r=80, t=8, b=8),
+                bargap=0.3,
+            )
+            st.plotly_chart(fig_pf, use_container_width=True)
+
+        with ch2:
+            section_title(
+                f"Krankentage – {pf_monat}",
+                "Top 15 nach Krankentagen"
+            )
+            if kr_col and not df_kr.empty:
+                df_kr_m = (
+                    df_kr[df_kr[kr_col].notna() & (df_kr[kr_col] > 0)]
+                    [["Name", "Position", "Standort", kr_col]]
+                    .sort_values(kr_col, ascending=False)
+                    .head(15)
+                )
+                if not df_kr_m.empty:
+                    k_colors = df_kr_m[kr_col].apply(
+                        lambda v: C_RED if v >= 8 else (C_HONEY if v >= 4 else C_STONE)
+                    ).tolist()
+                    fig_kr = go.Figure(go.Bar(
+                        x=df_kr_m[kr_col],
+                        y=df_kr_m["Name"],
+                        orientation="h",
+                        marker=dict(color=k_colors, cornerradius=5, line=dict(width=0)),
+                        text=df_kr_m[kr_col].apply(lambda v: f"{int(v)} T"),
+                        textposition="outside",
+                        textfont=dict(color=PFG, size=11),
+                        hovertemplate="<b>%{y}</b><br>%{x} Krankentage<extra></extra>",
+                    ))
+                    fig_kr.update_layout(
+                        **plotly_base(),
+                        xaxis=dict(gridcolor=PGRD, zeroline=False),
+                        yaxis=dict(tickfont=dict(size=10, color=T["text_second"])),
+                        height=max(300, len(df_kr_m) * 26),
+                        margin=dict(l=4, r=50, t=8, b=8),
+                        bargap=0.3,
+                    )
+                    st.plotly_chart(fig_kr, use_container_width=True)
+                else:
+                    st.info(f"Keine Krankentage im {pf_monat} verzeichnet. ✅")
+            else:
+                st.caption("Keine Krankentage-Daten für diesen Monat.")
+
+        # ── Monatstrend ──────────────────────────────────────────
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        section_title("Monatstrend", "Ø Umsatz pro Monat – alle Vertriebsmitarbeiterinnen")
+
+        trend_data = []
+        for m in avail_months:
+            col = m
+            sub = df_pf_raw[df_pf_raw[col].notna() & (df_pf_raw[col] > 0) &
+                            df_pf_raw["Position"].isin(["KM", "SL", "Standortleitung"])]
+            if not sub.empty:
+                trend_data.append({
+                    "Monat": m,
+                    "Ø Umsatz": sub[col].mean(),
+                    "Anz. MA": len(sub),
+                    "Ø Krank": df_kr_raw[col].mean() if col in df_kr_raw.columns else 0,
+                })
+
+        if trend_data:
+            df_trend = pd.DataFrame(trend_data)
+            fig_trend = go.Figure()
+            # Fläche
+            fig_trend.add_trace(go.Scatter(
+                x=df_trend["Monat"], y=df_trend["Ø Umsatz"],
+                fill="tozeroy", fillcolor="rgba(232,98,10,0.06)",
+                line=dict(width=0), showlegend=False, hoverinfo="skip",
+            ))
+            # Linie Umsatz
+            fig_trend.add_trace(go.Scatter(
+                x=df_trend["Monat"], y=df_trend["Ø Umsatz"],
+                name="Ø Umsatz",
+                line=dict(color=C_ORANGE, width=2.5),
+                marker=dict(size=8, color=C_ORANGE,
+                            line=dict(width=2.5, color=T["app_bg"])),
+                mode="lines+markers",
+                hovertemplate="<b>%{x}</b><br>Ø Umsatz: %{y:,.0f} €<extra></extra>",
+            ))
+            # Sekundärachse: Krankentage
+            if "Ø Krank" in df_trend.columns:
+                fig_trend.add_trace(go.Scatter(
+                    x=df_trend["Monat"], y=df_trend["Ø Krank"],
+                    name="Ø Krankentage",
+                    line=dict(color=C_RED, width=2, dash="dot"),
+                    marker=dict(size=6, color=C_RED),
+                    mode="lines+markers",
+                    yaxis="y2",
+                    hovertemplate="<b>%{x}</b><br>Ø Krank: %{y:.1f} Tage<extra></extra>",
+                ))
+
+            fig_trend.update_layout(
+                **plotly_base(),
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                            font=dict(size=12), itemgap=16),
+                yaxis=dict(
+                    title="Ø Umsatz (€)",
+                    gridcolor=PGRD, zeroline=False,
+                    tickformat=",.0f",
+                    title_font=dict(size=11, color=T["text_muted"]),
+                ),
+                yaxis2=dict(
+                    title="Ø Krankentage",
+                    overlaying="y", side="right",
+                    gridcolor="rgba(0,0,0,0)", zeroline=False,
+                    title_font=dict(size=11, color=C_RED),
+                    tickfont=dict(color=C_RED),
+                ),
+                xaxis=dict(gridcolor=PGRD, zeroline=False),
+                height=300,
+                margin=dict(l=4, r=60, t=30, b=8),
+            )
+            st.plotly_chart(fig_trend, use_container_width=True)
+
+        # ── Detail-Tabelle ───────────────────────────────────────
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        section_title("Detailtabelle", f"Alle Vertriebsmitarbeiterinnen · Monat {pf_monat}")
+
+        disp_cols_pf = ["Name", "Position", "Standort", "Status", pf_monat]
+        if kr_col and kr_col in df_kr.columns:
+            # Krankentage joinen
+            df_kr_join = df_kr[["Name", kr_col]].rename(columns={kr_col: "Krankentage"})
+            df_detail  = df_pf[disp_cols_pf].merge(df_kr_join, on="Name", how="left")
+        else:
+            df_detail = df_pf[disp_cols_pf].copy()
+
+        df_detail = df_detail.rename(columns={pf_monat: "Umsatz (€)"})
+        df_detail = df_detail.sort_values("Umsatz (€)", ascending=False, na_position="last")
+        df_detail["Umsatz (€)"] = df_detail["Umsatz (€)"].apply(
+            lambda v: f"{v:,.0f}".replace(",", ".") if pd.notna(v) else "–"
+        )
+
+        st.dataframe(df_detail, use_container_width=True, hide_index=True)
+
+        # ── Download ─────────────────────────────────────────────
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        exp1, exp2 = st.columns(2)
+        with exp1:
+            st.download_button(
+                "📥 Performer-Daten (CSV)",
+                data=df_pf.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
+                file_name=f"Senzera_Performer_{pf_monat}.csv",
+                mime="text/csv", use_container_width=True,
+            )
+        with exp2:
+            st.download_button(
+                "📥 Krankentage (CSV)",
+                data=df_kr.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
+                file_name=f"Senzera_Krankentage_{pf_monat}.csv",
+                mime="text/csv", use_container_width=True,
+            )
 
 
 # ══════════════════════════════════════════════════════════════════
