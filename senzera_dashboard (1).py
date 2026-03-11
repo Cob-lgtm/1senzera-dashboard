@@ -697,6 +697,15 @@ with st.sidebar:
     sel_rl  = st.selectbox("Regionalleitung", rl_opts)
     df_rl   = df_google if sel_rl == "Alle" else df_google[df_google["Regionalleitung"] == sel_rl]
 
+    # Wenn RL gewechselt wurde → Studio-Auswahl zurücksetzen
+    if "prev_rl" not in st.session_state:
+        st.session_state.prev_rl = sel_rl
+    rl_changed = sel_rl != st.session_state.prev_rl
+    if rl_changed:
+        st.session_state.prev_rl = sel_rl
+        # Zähler hochsetzen → erzwingt neuen Widget-Key → Reset
+        st.session_state.rl_version = st.session_state.get("rl_version", 0) + 1
+
     all_months = sorted(df_rl["Monat"].dropna().unique().tolist())
     if len(all_months) > 1:
         sel_monat = st.selectbox("Berichtsmonat", all_months, index=len(all_months) - 1)
@@ -707,12 +716,12 @@ with st.sidebar:
     studio_opts = sorted(df_rl["Studio_Name"].unique().tolist())
     st.markdown(f"<div style='margin-bottom:6px;'><span style='font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:{T['text_muted']};'>Studios</span></div>", unsafe_allow_html=True)
 
-    default_sel = st.session_state.get("sel_studios", studio_opts)
-    default_sel = [s for s in default_sel if s in studio_opts]
-    if not default_sel:
-        default_sel = studio_opts
-    sel_studios = st.multiselect("Studios", studio_opts, default=default_sel, label_visibility="collapsed")
-    st.session_state.sel_studios = sel_studios
+    # Dynamischer Key: Bei RL-Wechsel → neuer Key → Widget resettet auf alle Studios
+    rl_ver = st.session_state.get("rl_version", 0)
+    sel_studios = st.multiselect(
+        "Studios", studio_opts, default=studio_opts,
+        label_visibility="collapsed", key=f"sel_studios_v{rl_ver}",
+    )
 
     if not sel_studios:
         st.warning("⚠️ Bitte mindestens ein Studio wählen.")
