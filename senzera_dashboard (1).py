@@ -1,5 +1,5 @@
 """
-Senzera Performance Hub – v5
+Senzera Performance Hub – v5 (Mobile Optimized)
 ============================================
 Starten:  streamlit run senzera_dashboard.py
 Dateien:  Senzera_Dashboard_Data.csv  +  Zenloop_Antworten.csv
@@ -32,6 +32,17 @@ st.set_page_config(
     page_icon="🌸",
     layout="wide",
     initial_sidebar_state="expanded",
+)
+
+# --- GOOGLE UNSICHTBAR-MANTEL ---
+st.markdown(
+    """
+    <style>
+        .hide-from-google { display: none; }
+    </style>
+    <meta name="robots" content="noindex, nofollow">
+    """,
+    unsafe_allow_html=True,
 )
 
 # ══════════════════════════════════════════════════════════════════
@@ -112,7 +123,6 @@ if "theme" not in st.session_state:
 
 T = THEMES[st.session_state.theme]
 
-
 # ══════════════════════════════════════════════════════════════════
 # 4 · CSS INJECTION
 # ══════════════════════════════════════════════════════════════════
@@ -177,13 +187,17 @@ div, span, p, label, input, select, textarea, button {{
     box-shadow: none !important;
 }}
 
-[data-testid="stToolbar"] {{ display: none !important; }}
-[data-testid="stDecoration"] {{ display: none !important; }}
-[data-testid="stSidebarCollapseButton"] span {{ display: none !important; }}
-[data-testid="collapsedControl"] span {{ display: none !important; }}
-button[data-testid="stBaseButton-headerNoPadding"] span {{ display: none !important; }}
-.st-emotion-cache-1egp75f {{ display: none !important; }}
-kbd {{ display: none !important; }}
+/* WICHTIG: Hamburger-Menü auf Handys sichtbar machen! */
+[data-testid="stSidebarCollapseButton"] {{
+    color: {C_ORANGE} !important;
+    background-color: {t["card_bg"]} !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+}}
+[data-testid="collapsedControl"] {{
+    z-index: 100000 !important;
+}}
+
 footer {{ visibility: hidden !important; }}
 #MainMenu {{ display: none !important; }}
 
@@ -207,10 +221,25 @@ h1 {{
     letter-spacing: -0.5px !important;
     line-height: 1.15 !important;
 }}
-h2 {{ font-weight: 600 !important; font-size: 1rem !important; }}
-p {{ color: {t["text_second"]} !important; }}
-[data-testid="stMarkdownContainer"] p {{ color: {t["text_second"]} !important; }}
-label {{ color: {t["text_label"]} !important; }}
+
+/* MOBILE OPTIMIERUNGEN */
+@media (max-width: 768px) {{
+    .main .block-container {{
+        padding-top: 3rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }}
+    h1 {{ font-size: 1.5rem !important; }}
+    [data-testid="stMetricValue"] {{ font-size: 1.5rem !important; }}
+    [data-testid="metric-container"] {{ padding: 12px 14px 12px !important; }}
+    [data-testid="stTabs"] [data-baseweb="tab"] {{
+        padding: 10px 12px !important;
+        font-size: 9px !important;
+    }}
+    [data-testid="stSidebar"] {{
+        width: 85% !important;
+    }}
+}}
 
 hr {{
     border: none !important;
@@ -238,186 +267,19 @@ hr {{
     transform: translateY(-1px) !important;
     color: #FFFFFF !important;
 }}
-[data-testid="stButton"] button:disabled {{
-    background: {t["card_border"]} !important;
-    color: {t["text_muted"]} !important;
-    box-shadow: none !important;
-    transform: none !important;
-}}
 
 [data-baseweb="select"] > div {{
     background: {t["input_bg"]} !important;
     border: 1.5px solid {t["input_border"]} !important;
     border-radius: 11px !important;
     color: {t["text_input"]} !important;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
     min-height: 44px !important;
 }}
-[data-baseweb="select"] > div:hover {{ border-color: {C_ORANGE} !important; }}
 [data-baseweb="select"] > div:focus-within {{
     border-color: {C_ORANGE} !important;
     box-shadow: {t["input_shadow_f"]} !important;
 }}
 [data-baseweb="select"] span {{ color: {t["text_input"]} !important; }}
-
-[data-baseweb="popover"] > div > div {{
-    background: {t["dropdown_bg"]} !important;
-    border: 1px solid {t["card_border"]} !important;
-    border-radius: 14px !important;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06) !important;
-    overflow: hidden !important;
-}}
-li[role="option"] {{
-    background: {t["dropdown_bg"]} !important;
-    color: {t["text_input"]} !important;
-    font-size: 13px !important;
-    padding: 10px 16px !important;
-    transition: background 0.1s ease !important;
-}}
-li[role="option"]:hover {{
-    background: {t["dropdown_item_hover"]} !important;
-    color: {C_ORANGE} !important;
-}}
-li[role="option"][aria-selected="true"] {{
-    background: {t["dropdown_item_hover"]} !important;
-    color: {C_ORANGE} !important;
-    font-weight: 600 !important;
-}}
-
-[data-baseweb="tag"] {{
-    background: {t["tag_bg"]} !important;
-    color: {t["tag_fg"]} !important;
-    border-radius: 100px !important;
-    border: 1.5px solid rgba(232,98,10,0.2) !important;
-    font-size: 11.5px !important;
-    font-weight: 600 !important;
-    padding: 3px 10px 3px 12px !important;
-}}
-[data-baseweb="tag"] span {{ color: {t["tag_fg"]} !important; }}
-[data-baseweb="tag"] button {{ color: {t["tag_fg"]} !important; opacity: 0.6 !important; }}
-
-[data-testid="stRadio"] > div {{
-    gap: 6px !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-}}
-[data-testid="stRadio"] label {{
-    background: {t["input_bg"]} !important;
-    border: 1.5px solid {t["input_border"]} !important;
-    border-radius: 100px !important;
-    padding: 7px 18px !important;
-    cursor: pointer !important;
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    color: {t["text_body"]} !important;
-    transition: all 0.15s ease !important;
-    margin: 0 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-}}
-[data-testid="stRadio"] label:hover {{
-    border-color: {C_ORANGE} !important;
-    color: {C_ORANGE} !important;
-}}
-[data-testid="stRadio"] label:has(input:checked) {{
-    background: {C_ORANGE} !important;
-    border-color: {C_ORANGE} !important;
-    color: #FFFFFF !important;
-    box-shadow: 0 2px 8px rgba(232,98,10,0.3) !important;
-}}
-[data-testid="stRadio"] label:has(input:checked) p,
-[data-testid="stRadio"] label:has(input:checked) span {{ color: #FFFFFF !important; }}
-[data-testid="stRadio"] label p,
-[data-testid="stRadio"] label span {{ color: inherit !important; font-size: 12px !important; }}
-[data-testid="stRadio"] input {{ display: none !important; }}
-
-[data-testid="stSelectbox"] > label,
-[data-testid="stMultiSelect"] > label,
-[data-testid="stRadio"] > label,
-[data-testid="stNumberInput"] > label {{
-    font-size: 10px !important;
-    font-weight: 700 !important;
-    letter-spacing: 1.3px !important;
-    text-transform: uppercase !important;
-    color: {t["text_muted"]} !important;
-    margin-bottom: 6px !important;
-    display: block !important;
-}}
-
-[data-testid="stDataFrameResizable"],
-[data-testid="stDataFrame"] > div {{
-    background: {t["card_bg"]} !important;
-    border: 1px solid {t["card_border"]} !important;
-    border-radius: 14px !important;
-    overflow: hidden !important;
-    box-shadow: {t["card_shadow"]} !important;
-}}
-[data-testid="glideDataEditor"] .gdg-header-cell,
-[data-testid="stDataFrameResizable"] th {{
-    background: {t["table_head_bg"]} !important;
-    color: {t["text_muted"]} !important;
-    font-size: 10px !important;
-    font-weight: 700 !important;
-    letter-spacing: 1px !important;
-    text-transform: uppercase !important;
-    border-bottom: 1px solid {t["table_border"]} !important;
-}}
-[data-testid="stDataFrameResizable"] td {{
-    background: {t["table_row_bg"]} !important;
-    color: {t["text_table"]} !important;
-    font-size: 13px !important;
-    border-bottom: 1px solid {t["table_border"]} !important;
-}}
-
-textarea {{
-    font-family: 'Courier New', monospace !important;
-    font-size: 11.5px !important;
-    line-height: 1.75 !important;
-    background: {t["input_bg"]} !important;
-    color: {t["text_input"]} !important;
-    border: 1.5px solid {t["input_border"]} !important;
-    border-radius: 12px !important;
-    padding: 16px 18px !important;
-}}
-textarea:focus {{
-    border-color: {C_ORANGE} !important;
-    box-shadow: {t["input_shadow_f"]} !important;
-    outline: none !important;
-}}
-
-div[class*="stSuccess"] {{ background: {t["ok_bg"]} !important; border-left: 3px solid {t["ok_br"]} !important; border-radius: 12px !important; padding: 12px 18px !important; }}
-div[class*="stWarning"] {{ background: {t["warn_bg"]} !important; border-left: 3px solid {t["warn_br"]} !important; border-radius: 12px !important; padding: 12px 18px !important; }}
-div[class*="stError"] {{ background: {t["err_bg"]} !important; border-left: 3px solid {t["err_br"]} !important; border-radius: 12px !important; padding: 12px 18px !important; }}
-div[class*="stInfo"] {{ background: {t["info_bg"]} !important; border-left: 3px solid {t["info_br"]} !important; border-radius: 12px !important; padding: 12px 18px !important; }}
-div[class*="stSuccess"] *, div[class*="stWarning"] *, div[class*="stError"] *, div[class*="stInfo"] * {{ color: {t["text_body"]} !important; }}
-
-input[type="password"] {{
-    background: {t["input_bg"]} !important;
-    color: {t["text_input"]} !important;
-    border: 1.5px solid {t["input_border"]} !important;
-    border-radius: 11px !important;
-    padding: 12px 16px !important;
-    font-size: 14px !important;
-    width: 100% !important;
-}}
-input[type="password"]:focus {{
-    border-color: {C_ORANGE} !important;
-    box-shadow: {t["input_shadow_f"]} !important;
-    outline: none !important;
-}}
-
-.stCaption, [data-testid="stCaptionContainer"] * {{ font-size: 11px !important; color: {t["text_muted"]} !important; }}
-::-webkit-scrollbar {{ width: 5px; height: 5px; }}
-::-webkit-scrollbar-track {{ background: transparent; }}
-::-webkit-scrollbar-thumb {{ background: {t["scroll"]}; border-radius: 4px; }}
-::-webkit-scrollbar-thumb:hover {{ background: {C_ORANGE}; }}
-
-[data-testid="stExpander"] {{ background: {t["card_bg"]} !important; border: 1px solid {t["card_border"]} !important; border-radius: 12px !important; }}
-[data-testid="stExpander"] summary {{ color: {t["text_body"]} !important; font-weight: 500 !important; padding: 12px 16px !important; }}
-[data-testid="stExpander"] summary:hover {{ color: {C_ORANGE} !important; }}
-[data-testid="stHorizontalBlock"] > div {{ gap: 16px !important; }}
-[data-testid="stSpinner"] * {{ color: {C_ORANGE} !important; }}
-.js-plotly-plot .plotly, .js-plotly-plot .plotly .svg-container {{ background: transparent !important; }}
 
 [data-testid="metric-container"] {{
     background: {t["card_bg"]} !important;
@@ -429,21 +291,6 @@ input[type="password"]:focus {{
     position: relative !important;
     overflow: hidden !important;
 }}
-[data-testid="metric-container"]:hover {{
-    box-shadow: {t["card_shadow_h"]} !important;
-    transform: translateY(-2px) !important;
-    border-color: rgba(232,98,10,0.25) !important;
-}}
-[data-testid="metric-container"]::before {{
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, {C_ORANGE}, {C_HONEY});
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}}
-[data-testid="metric-container"]:hover::before {{ opacity: 1; }}
 [data-testid="stMetricLabel"] {{
     font-size: 10.5px !important;
     font-weight: 700 !important;
@@ -474,13 +321,8 @@ button[data-baseweb="tab"] {{
     padding: 12px 18px !important;
     background: transparent !important;
     border: none !important;
-    transition: color 0.15s ease, background 0.15s ease !important;
     border-radius: 10px 10px 0 0 !important;
     margin-bottom: -1.5px !important;
-}}
-button[data-baseweb="tab"]:hover {{
-    color: {t["text_h"]} !important;
-    background: {t["tag_bg"]} !important;
 }}
 button[data-baseweb="tab"][aria-selected="true"] {{
     color: {C_ORANGE} !important;
@@ -488,17 +330,6 @@ button[data-baseweb="tab"][aria-selected="true"] {{
     background: {t["tag_bg"]} !important;
 }}
 [data-baseweb="tab-panel"] {{ padding-top: 28px !important; background: transparent !important; }}
-
-[data-testid="stSidebar"] [data-testid="stSelectbox"] label,
-[data-testid="stSidebar"] [data-testid="stMultiSelect"] label,
-[data-testid="stSidebar"] [data-testid="stRadio"] label {{
-    font-size: 9.5px !important;
-    font-weight: 800 !important;
-    letter-spacing: 1.8px !important;
-    color: {t["text_muted"]} !important;
-}}
-[data-testid="stSidebar"] [data-baseweb="select"] > div {{ border-radius: 12px !important; min-height: 42px !important; }}
-[data-testid="stVerticalBlock"] > [data-testid="element-container"]:has(> .stMarkdown) {{ animation: fadeSlideUp 0.35s ease both; }}
 </style>
 """
     st.markdown(css, unsafe_allow_html=True)
@@ -516,7 +347,6 @@ PGRD = T["plot_grid"]
 def load_google(path: str = "Senzera_Dashboard_Data.csv") -> pd.DataFrame:
     if not os.path.exists(path):
         return pd.DataFrame()
-    # Versuche Semikolon (deutsch), dann Komma als Fallback
     try:
         df = pd.read_csv(path, sep=";")
         if len(df.columns) <= 1:
@@ -543,7 +373,6 @@ def load_google(path: str = "Senzera_Dashboard_Data.csv") -> pd.DataFrame:
 def load_zenloop(path: str = "Zenloop_Antworten.csv") -> pd.DataFrame:
     if not os.path.exists(path):
         return pd.DataFrame()
-    # Versuche Semikolon, dann Komma als Fallback
     try:
         df = pd.read_csv(path, sep=";")
         if len(df.columns) <= 1:
@@ -561,9 +390,7 @@ df_zenloop = load_zenloop()
 
 if df_google.empty:
     st.error("❌ **'Senzera_Dashboard_Data.csv'** nicht gefunden.")
-    st.info("Bitte Datei in denselben Ordner wie dieses Skript legen und neu starten.")
     st.stop()
-
 
 # ══════════════════════════════════════════════════════════════════
 # 6 · HELFER
@@ -650,13 +477,10 @@ def label_bar(label: str, cnt: int, max_cnt: int, color: str = C_ORANGE, bg: str
 def plotly_base() -> dict:
     return dict(plot_bgcolor=PBG, paper_bgcolor=PBG, font=dict(color=PFG, family="Plus Jakarta Sans", size=12), showlegend=False)
 
-
 # ══════════════════════════════════════════════════════════════════
 # 7 · SIDEBAR
 # ══════════════════════════════════════════════════════════════════
 with st.sidebar:
-
-    # ── Branding: Text-Logo ──────────────────────────────────────
     st.markdown(
         f"""<div style='padding:24px 8px 20px;border-bottom:1px solid {T["sidebar_border"]};margin-bottom:22px;'>
             <div style='background:#FFFFFF;border-radius:18px;padding:24px 24px 20px;text-align:center;
@@ -685,7 +509,6 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    # ── Filter ───────────────────────────────────────────────────
     st.markdown(
         f"""<div style='display:flex;align-items:center;gap:8px;margin-bottom:16px;'>
             <div style='flex:1;height:1px;background:{T["divider"]};'></div>
@@ -697,13 +520,11 @@ with st.sidebar:
     sel_rl  = st.selectbox("Regionalleitung", rl_opts)
     df_rl   = df_google if sel_rl == "Alle" else df_google[df_google["Regionalleitung"] == sel_rl]
 
-    # Wenn RL gewechselt wurde → Studio-Auswahl zurücksetzen
     if "prev_rl" not in st.session_state:
         st.session_state.prev_rl = sel_rl
     rl_changed = sel_rl != st.session_state.prev_rl
     if rl_changed:
         st.session_state.prev_rl = sel_rl
-        # Zähler hochsetzen → erzwingt neuen Widget-Key → Reset
         st.session_state.rl_version = st.session_state.get("rl_version", 0) + 1
 
     all_months = sorted(df_rl["Monat"].dropna().unique().tolist())
@@ -716,7 +537,6 @@ with st.sidebar:
     studio_opts = sorted(df_rl["Studio_Name"].unique().tolist())
     st.markdown(f"<div style='margin-bottom:6px;'><span style='font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:{T['text_muted']};'>Studios</span></div>", unsafe_allow_html=True)
 
-    # Dynamischer Key: Bei RL-Wechsel → neuer Key → Widget resettet auf alle Studios
     rl_ver = st.session_state.get("rl_version", 0)
     sel_studios = st.multiselect(
         "Studios", studio_opts, default=studio_opts,
@@ -750,7 +570,6 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
 
-    # ── Darstellung (ganz unten) ─────────────────────────────────
     st.markdown(
         f"""<div style='display:flex;align-items:center;gap:8px;margin:20px 0 12px;'>
             <div style='flex:1;height:1px;background:{T["divider"]};'></div>
@@ -761,8 +580,6 @@ with st.sidebar:
     if theme_choice != st.session_state.theme:
         st.session_state.theme = theme_choice
         st.rerun()
-
-    st.markdown(f"<div style='padding:16px 4px 8px;text-align:center;font-size:10px;color:{T['text_muted']};'>Alle Daten lokal · keine externe Übertragung</div>", unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -875,7 +692,6 @@ st.divider()
 # 12 · TABS
 # ══════════════════════════════════════════════════════════════════
 tab1, tab2, tab3, tab4 = st.tabs(["  📊  Performance & Trends  ", "  💙  Zenloop Deep-Dive  ", "  📝  Management-Bericht  ", "  🔒  Team-Performer  "])
-
 
 # ──────────────────────────────────────────────────────────────────
 # TAB 1 · PERFORMANCE & TRENDS
