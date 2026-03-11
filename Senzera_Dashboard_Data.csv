@@ -1,52 +1,52 @@
-Studiokürzel,Regionalleitung,Stadt,Strasse + HNr,Rating,TotalReviews,NewReviews,Monat,NewRating,NPS
-AC1,REK,Aachen,Holzgraben 17,4.5,188,1,März 2026,,95.0
-A1,SAW,Augsburg,Schaezlerstrasse 2,4.4,208,1,März 2026,,91.0
-B1,JOS,Berlin,Meinekestraße 26,4.4,139,1,März 2026,,100.0
-B2,JOS,Berlin,Monbijouplatz 3,4.5,182,0,März 2026,,93.0
-B3,JOS,Berlin,Kollwitzstraße 28,4.7,124,0,März 2026,,90.0
-B4,JOS,Berlin,Rheinstrasse 45,4.7,144,0,März 2026,,92.0
-BO1,ISP,Bochum,Grabenstraße 1-3,4.5,217,0,März 2026,,83.0
-BN1,CST,Bonn,Stockenstraße 4,4.3,174,0,März 2026,,74.0
-BS1,JOS,Braunschweig,Münzstraße 15,4.7,223,0,März 2026,,89.0
-HB1,JOS,Bremen,Knochenhauerstraße 26,4.3,170,0,März 2026,,75.0
-DO1,ISP,Dortmund,Freistuhl 3,4.7,278,0,März 2026,,88.0
-D1,ISP,Düsseldorf,Graf-Adolf-Platz 9,4.6,179,0,März 2026,,61.0
-D2,ISP,Düsseldorf,Nordstraße 8,4.5,184,0,März 2026,,87.0
-D3,ISP,Düsseldorf,Am Wehrhahn 2,4.6,262,0,März 2026,,93.0
-E1,MOM,Essen,Kapuzinergasse 2,4.6,229,0,März 2026,,94.0
-E2,MOM,Essen,Rüttenscheider Str. 171,4.7,359,0,März 2026,,83.0
-F1,ISP,Frankfurt,Leipziger Straße 8,4.7,230,0,März 2026,,81.0
-F2,ISP,Frankfurt,Habsburgerallee 1,4.5,204,0,März 2026,,85.0
-F3,ISP,Frankfurt,Oeder Weg 43,4.4,134,0,März 2026,,85.0
-F4,ISP,Frankfurt,Gartenstraße 19,4.5,182,0,März 2026,,91.0
-FR1,ANI,Freiburg,Habsburgerstrasse 129,4.4,136,0,März 2026,,67.0
-HH3,CST,Hamburg,Eppendorfer Landstr. 27,4.6,103,0,März 2026,,92.0
-HH4,CST,Hamburg,Dornbusch 2,4.5,106,0,März 2026,,42.0
-HH5,CST,Hamburg,Schanzenstrasse 60,4.5,77,0,März 2026,,91.0
-H1,JOS,Hannover,Lange Laube 1a,4.6,151,0,März 2026,,90.0
-H2,JOS,Hannover,Lister Meile 27,4.5,138,0,März 2026,,70.0
-K1,REK,Köln,Venloer Straße 317,4.4,175,0,März 2026,,74.0
-K2,REK,Köln,Benesisstr. 50,4.7,196,0,März 2026,,93.0
-K3,REK,Köln,Ebertplatz 3-5,4.6,146,0,März 2026,,88.0
-K4,REK,Köln,Bonner Strasse 24,4.6,164,0,März 2026,,83.0
-K5,REK,Köln,Berrenratherstr. 280,4.6,112,0,März 2026,,100.0
-L1,JOS,Leipzig,Städtisches Kaufhaus Kupfergasse 1,4.9,444,0,März 2026,,85.0
-MZ1,ANI,Mainz,Steingasse 9,4.4,194,0,März 2026,,100.0
-MA1,ANI,Mannheim,"Q4, 18",4.7,163,0,März 2026,,100.0
-M1,SAW,München,Herzogspitalstraße 5,4.5,112,0,März 2026,,0.0
-M2,SAW,München,Klenzestraße 32,4.3,133,0,März 2026,,54.0
-M3,SAW,München,Pariser Platz 2,4.3,179,0,März 2026,,100.0
-M4,SAW,München,Schellingstrasse 102,4.0,174,0,März 2026,,83.0
-M5,SAW,München,Kurfürstenstraße 69,4.3,100,0,März 2026,,100.0
-M6,SAW,München,Türkenstraße 27,4.7,106,0,März 2026,,95.0
-MS1,JOS,Münster,Aegidiistraße 55,4.1,138,0,März 2026,,72.0
-MS2,JOS,Münster,Mauritzstr. 4-6,4.1,119,0,März 2026,,67.0
-OS1,JOS,Osnabrück,Kamp 83,4.4,156,0,März 2026,,77.0
-S1,ANI,Stuttgart,Marienstrasse 36b,4.5,170,0,März 2026,,73.0
-S2,ANI,Stuttgart,Hirschstraße 8,4.8,221,0,März 2026,,100.0
-S3,ANI,Stuttgart,Büchsenstraße 26b,4.4,182,0,März 2026,,0.0
-AT1,DED,Wien,Alserstraße 43,4.6,267,0,März 2026,,78.0
-AT2,DED,Wien,Landstraßer Hauptstraße 104,4.8,223,1,März 2026,,82.0
-AT3,DED,Wien,Barnabitengasse 10,4.7,326,0,März 2026,,73.0
-AT4,DED,Wien,Wollzeile 30,4.7,182,0,März 2026,,92.0
-WI1,ANI,Wiesbaden,Michelsberg 3,4.3,160,0,März 2026,,100.0
+Studiokürzel;Regionalleitung;Stadt;Strasse + HNr;Rating;TotalReviews;NewReviews;Monat;NewRating;NPS
+AC1;REK;Aachen;Holzgraben 17;4.5;188;1;März 2026;;95.0
+A1;SAW;Augsburg;Schaezlerstrasse 2;4.4;208;1;März 2026;;91.0
+B1;JOS;Berlin;Meinekestraße 26;4.4;139;1;März 2026;;100.0
+B2;JOS;Berlin;Monbijouplatz 3;4.5;182;0;März 2026;;93.0
+B3;JOS;Berlin;Kollwitzstraße 28;4.7;124;0;März 2026;;90.0
+B4;JOS;Berlin;Rheinstrasse 45;4.7;144;0;März 2026;;92.0
+BO1;ISP;Bochum;Grabenstraße 1-3;4.5;217;0;März 2026;;83.0
+BN1;JOS;Bonn;Stockenstraße 4;4.3;174;0;März 2026;;74.0
+BS1;JOS;Braunschweig;Münzstraße 15;4.7;223;0;März 2026;;89.0
+HB1;JANA;Bremen;Knochenhauerstraße 26;4.3;170;0;März 2026;;75.0
+DO1;ISP;Dortmund;Freistuhl 3;4.7;278;0;März 2026;;88.0
+D1;ISP;Düsseldorf;Graf-Adolf-Platz 9;4.6;179;0;März 2026;;61.0
+D2;ISP;Düsseldorf;Nordstraße 8;4.5;184;0;März 2026;;87.0
+D3;ISP;Düsseldorf;Am Wehrhahn 2;4.6;262;0;März 2026;;93.0
+E1;DED;Essen;Kapuzinergasse 2;4.6;229;0;März 2026;;94.0
+E2;DED;Essen;Rüttenscheider Str. 171;4.7;359;0;März 2026;;83.0
+F1;ISP;Frankfurt;Leipziger Straße 8;4.7;230;0;März 2026;;81.0
+F2;ISP;Frankfurt;Habsburgerallee 1;4.5;204;0;März 2026;;85.0
+F3;ISP;Frankfurt;Oeder Weg 43;4.4;134;0;März 2026;;85.0
+F4;ISP;Frankfurt;Gartenstraße 19;4.5;182;0;März 2026;;91.0
+FR1;ANI;Freiburg;Habsburgerstrasse 129;4.4;136;0;März 2026;;67.0
+HH3;JANA;Hamburg;Eppendorfer Landstr. 27;4.6;103;0;März 2026;;92.0
+HH4;JANA;Hamburg;Dornbusch 2;4.5;106;0;März 2026;;42.0
+HH5;JANA;Hamburg;Schanzenstrasse 60;4.5;77;0;März 2026;;91.0
+H1;JOS;Hannover;Lange Laube 1a;4.6;151;0;März 2026;;90.0
+H2;JOS;Hannover;Lister Meile 27;4.5;138;0;März 2026;;70.0
+K1;REK;Köln;Venloer Straße 317;4.4;175;0;März 2026;;74.0
+K2;REK;Köln;Benesisstr. 50;4.7;196;0;März 2026;;93.0
+K3;REK;Köln;Ebertplatz 3-5;4.6;146;0;März 2026;;88.0
+K4;REK;Köln;Bonner Strasse 24;4.6;164;0;März 2026;;83.0
+K5;REK;Köln;Berrenratherstr. 280;4.6;112;0;März 2026;;100.0
+L1;JOS;Leipzig;Städtisches Kaufhaus Kupfergasse 1;4.9;444;0;März 2026;;85.0
+MZ1;ANI;Mainz;Steingasse 9;4.4;194;0;März 2026;;100.0
+MA1;ANI;Mannheim;Q4, 18;4.7;163;0;März 2026;;100.0
+M1;SAW;München;Herzogspitalstraße 5;4.5;112;0;März 2026;;0.0
+M2;SAW;München;Klenzestraße 32;4.3;133;0;März 2026;;54.0
+M3;SAW;München;Pariser Platz 2;4.3;179;0;März 2026;;100.0
+M4;SAW;München;Schellingstrasse 102;4.0;174;0;März 2026;;83.0
+M5;SAW;München;Kurfürstenstraße 69;4.3;100;0;März 2026;;100.0
+M6;SAW;München;Türkenstraße 27;4.7;106;0;März 2026;;95.0
+MS1;DED;Münster;Aegidiistraße 55;4.1;138;0;März 2026;;72.0
+MS2;DED;Münster;Mauritzstr. 4-6;4.1;119;0;März 2026;;67.0
+OS1;JOS;Osnabrück;Kamp 83;4.4;156;0;März 2026;;77.0
+S1;ANI;Stuttgart;Marienstrasse 36b;4.5;170;0;März 2026;;73.0
+S2;ANI;Stuttgart;Hirschstraße 8;4.8;221;0;März 2026;;100.0
+S3;ANI;Stuttgart;Büchsenstraße 26b;4.4;182;0;März 2026;;0.0
+AT1;DED;Wien;Alserstraße 43;4.6;267;0;März 2026;;78.0
+AT2;DED;Wien;Landstraßer Hauptstraße 104;4.8;223;1;März 2026;;82.0
+AT3;DED;Wien;Barnabitengasse 10;4.7;326;0;März 2026;;73.0
+AT4;DED;Wien;Wollzeile 30;4.7;182;0;März 2026;;92.0
+WI1;ANI;Wiesbaden;Michelsberg 3;4.3;160;0;März 2026;;100.0
