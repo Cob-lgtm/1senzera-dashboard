@@ -516,7 +516,13 @@ PGRD = T["plot_grid"]
 def load_google(path: str = "Senzera_Dashboard_Data.csv") -> pd.DataFrame:
     if not os.path.exists(path):
         return pd.DataFrame()
-    df = pd.read_csv(path)
+    # Versuche Semikolon (deutsch), dann Komma als Fallback
+    try:
+        df = pd.read_csv(path, sep=";")
+        if len(df.columns) <= 1:
+            df = pd.read_csv(path, sep=",")
+    except Exception:
+        df = pd.read_csv(path, sep=",")
     missing = REQ_GOOGLE - set(df.columns)
     if missing:
         st.error(f"Fehlende Spalten in Google-CSV: {missing}")
@@ -537,7 +543,13 @@ def load_google(path: str = "Senzera_Dashboard_Data.csv") -> pd.DataFrame:
 def load_zenloop(path: str = "Zenloop_Antworten.csv") -> pd.DataFrame:
     if not os.path.exists(path):
         return pd.DataFrame()
-    df = pd.read_csv(path)
+    # Versuche Semikolon, dann Komma als Fallback
+    try:
+        df = pd.read_csv(path, sep=";")
+        if len(df.columns) <= 1:
+            df = pd.read_csv(path, sep=",")
+    except Exception:
+        df = pd.read_csv(path, sep=",")
     df["score"] = pd.to_numeric(df.get("score", pd.Series(dtype=float)), errors="coerce")
     if "date_received" in df.columns:
         df["date_received"] = pd.to_datetime(df["date_received"], errors="coerce")
