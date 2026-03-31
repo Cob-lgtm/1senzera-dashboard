@@ -674,13 +674,12 @@ if not df_erstgaeste.empty:
         eg_sel = eg_monat
     total_erstgaeste = int(eg_sel["Erstgaeste"].sum()) if not eg_sel.empty else 0
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    ke1, ke2, ke3 = st.columns(3)
+    ke1, ke2 = st.columns(2)
     ke1.metric("Erstgäste (Neukunden)", f"{total_erstgaeste:,}".replace(",", "."), delta=sel_monat, delta_color="off")
     if sel_rl == "Alle" and not eg_monat.empty:
         eg_sorted = eg_monat.sort_values("Erstgaeste", ascending=False)
         top_region = eg_sorted.iloc[0]
         ke2.metric("Top Region", f"{top_region['Regionalleitung']}", delta=f"{int(top_region['Erstgaeste'])} Erstgäste", delta_color="off")
-        ke3.metric("Regionen mit Daten", f"{len(eg_monat)}", delta="Regionalleitungen", delta_color="off")
 
 # ══════════════════════════════════════════════════════════════════
 # 11 · ALARM
