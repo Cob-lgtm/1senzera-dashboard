@@ -1,5 +1,5 @@
 """
-Senzera Performance Hub – v5.1 (Mobile Optimized)
+Senzera Performance Hub – v5.2 (Mobile Optimized)
 ============================================
 Starten:  streamlit run senzera_dashboard.py
 Dateien:  Senzera_Dashboard_Data.csv  +  Zenloop_Antworten.csv
@@ -24,9 +24,9 @@ try:
 except ImportError:
     CRYPTO_OK = False
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 1 · PAGE CONFIG
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 st.set_page_config(
     page_title="Senzera Performance Hub",
     page_icon="🌸",
@@ -45,9 +45,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 2 · SENZERA CI
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 C_ORANGE      = "#E8620A"
 C_ORANGE_LT   = "#F47A2A"
 C_ORANGE_PALE = "#FEF2EB"
@@ -70,9 +70,9 @@ RATING_GOOD = 4.5
 REQ_GOOGLE  = {"Studiokürzel", "Stadt", "Regionalleitung", "Rating"}
 REQ_ZEN     = {"Property - studio", "score_type", "score"}
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 3 · THEME DEFINITIONEN
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 THEMES = {
     "☀️ Hell": {
         "mode": "light",
@@ -123,9 +123,9 @@ if "theme" not in st.session_state:
 
 T = THEMES[st.session_state.theme]
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 4 · CSS INJECTION
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 def inject_css(t: dict) -> None:
     css = f"""
 <style>
@@ -198,6 +198,13 @@ div, span, p, label, input, select, textarea, button {{
     z-index: 100000 !important;
 }}
 
+/* Fix: Material Icons für Sidebar-Toggle wiederherstellen */
+[data-testid="stSidebarCollapseButton"] button span,
+[data-testid="collapsedControl"] button span,
+[data-testid="stSidebarCollapsedControl"] button span {{
+    font-family: "Material Symbols Rounded" !important;
+}}
+
 footer {{ visibility: hidden !important; }}
 #MainMenu {{ display: none !important; }}
 
@@ -238,6 +245,20 @@ h1 {{
     }}
     [data-testid="stSidebar"] {{
         width: 85% !important;
+    }}
+    /* Mobile: Burger-Button besser sichtbar und klickbar */
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebarCollapsedControl"] {{
+        position: fixed !important;
+        top: 0.5rem !important;
+        left: 0.5rem !important;
+        z-index: 999999 !important;
+    }}
+    [data-testid="stSidebarCollapseButton"],
+    [data-testid="collapsedControl"] button,
+    [data-testid="stSidebarCollapsedControl"] button {{
+        min-width: 44px !important;
+        min-height: 44px !important;
     }}
 }}
 
@@ -340,9 +361,9 @@ PFG  = T["plot_font"]
 PGRD = T["plot_grid"]
 
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 5 · DATEN LADEN
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 @st.cache_data(show_spinner="🌸  Daten werden geladen …")
 def load_google(path: str = "Senzera_Dashboard_Data.csv") -> pd.DataFrame:
     if not os.path.exists(path):
@@ -364,7 +385,7 @@ def load_google(path: str = "Senzera_Dashboard_Data.csv") -> pd.DataFrame:
     if "TotalReviews" not in df.columns: df["TotalReviews"] = None
     df["Studio_Name"]  = df["Studiokürzel"] + " (" + df["Stadt"] + ")"
     df["Rating"]       = pd.to_numeric(df["Rating"],       errors="coerce")
-    df["NewReviews"]   = pd.to_numeric(df["NewReviews"],   errors="coerce").fillna(0).astype(int)
+    df["NewReviews"]   = pd.to_numeric(df["NewReviews"],  errors="coerce").fillna(0).astype(int)
     df["NPS"]          = pd.to_numeric(df["NPS"],          errors="coerce")
     df["TotalReviews"] = pd.to_numeric(df["TotalReviews"], errors="coerce")
     return df
@@ -388,29 +409,13 @@ def load_zenloop(path: str = "Zenloop_Antworten.csv") -> pd.DataFrame:
 df_google  = load_google()
 df_zenloop = load_zenloop()
 
-# ── Erstgäste-Daten laden ──
-@st.cache_data(show_spinner=False)
-def load_erstgaeste(path: str = "Erstgaeste_Data.csv") -> pd.DataFrame:
-    if not os.path.exists(path):
-        return pd.DataFrame()
-    try:
-        df = pd.read_csv(path, sep=";")
-        if len(df.columns) <= 1:
-            df = pd.read_csv(path, sep=",")
-    except Exception:
-        df = pd.read_csv(path, sep=",")
-    df["Erstgaeste"] = pd.to_numeric(df.get("Erstgaeste", pd.Series(dtype=float)), errors="coerce")
-    return df
-
-df_erstgaeste = load_erstgaeste()
-
 if df_google.empty:
     st.error("❌ **'Senzera_Dashboard_Data.csv'** nicht gefunden.")
     st.stop()
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 6 · HELFER
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 def calc_nps(df: pd.DataFrame) -> Optional[float]:
     if df.empty or "score_type" not in df.columns: return None
     total = len(df)
@@ -493,9 +498,9 @@ def label_bar(label: str, cnt: int, max_cnt: int, color: str = C_ORANGE, bg: str
 def plotly_base() -> dict:
     return dict(plot_bgcolor=PBG, paper_bgcolor=PBG, font=dict(color=PFG, family="Plus Jakarta Sans", size=12), showlegend=False)
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 7 · SIDEBAR
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown(
         f"""<div style='padding:24px 8px 20px;border-bottom:1px solid {T["sidebar_border"]};margin-bottom:22px;'>
@@ -598,9 +603,9 @@ with st.sidebar:
         st.rerun()
 
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 8 · DATEN FILTERN & KPIs
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 df_view  = df_rl[df_rl["Studio_Name"].isin(sel_studios)].copy()
 df_curr  = df_view[df_view["Monat"] == sel_monat].copy()
 months_s = sorted(df_view["Monat"].dropna().unique().tolist())
@@ -626,9 +631,9 @@ n_crit    = len(crit)
 codes_zen = sorted(df_zen["Property - studio"].dropna().unique().tolist()) if not df_zen.empty else []
 
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 9 · HEADER
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 hc1, hc2 = st.columns([5, 1])
 with hc1:
     badges_html = " ".join([badge("Management Cockpit"), badge(sel_monat, T["card_bg"], T["text_second"]), badge(sel_rl, T["card_bg"], T["text_second"])])
@@ -647,9 +652,9 @@ with hc2:
     if n_crit > 0: st.error(f"🚨 {n_crit} kritisch")
     else: st.success("✅ Alles OK")
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 10 · KPIs (3 + 3 Layout)
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 k1, k2, k3 = st.columns(3)
 k1.metric("Google Ø-Rating", f"{avg_rating:.2f} ⭐", delta=f"{delta_r:+.2f} vs. {vormonat}" if delta_r is not None else None, delta_color="normal" if delta_r and delta_r >= 0 else "inverse")
@@ -665,25 +670,9 @@ else:
 k5.metric("Positive Stimmung", f"{sentiment:.0f}%" if sentiment is not None else "–", delta="der Kommentare", delta_color="off", help="Anteil positiver Kommentare")
 k6.metric("Zenloop Antworten", f"{n_zen:,}".replace(",", "."), delta="Gesamtzeitraum", delta_color="off")
 
-# ── Erstgäste KPI ──
-if not df_erstgaeste.empty:
-    eg_monat = df_erstgaeste[df_erstgaeste["Monat"] == sel_monat]
-    if sel_rl != "Alle":
-        eg_sel = eg_monat[eg_monat["Regionalleitung"] == sel_rl]
-    else:
-        eg_sel = eg_monat
-    total_erstgaeste = int(eg_sel["Erstgaeste"].sum()) if not eg_sel.empty else 0
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    ke1, ke2 = st.columns(2)
-    ke1.metric("Erstgäste (Neukunden)", f"{total_erstgaeste:,}".replace(",", "."), delta=sel_monat, delta_color="off")
-    if sel_rl == "Alle" and not eg_monat.empty:
-        eg_sorted = eg_monat.sort_values("Erstgaeste", ascending=False)
-        top_region = eg_sorted.iloc[0]
-        ke2.metric("Top Region", f"{top_region['Regionalleitung']}", delta=f"{int(top_region['Erstgaeste'])} Erstgäste", delta_color="off")
-
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 11 · ALARM
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 if not crit.empty:
     st.markdown(
@@ -708,7 +697,7 @@ if not crit.empty:
                     <div style='display:flex;gap:8px;flex-wrap:wrap;align-items:center;'>
                         <span style='font-size:18px;font-weight:800;color:{r_color};line-height:1;'>{row["Rating"]:.2f}</span>
                         <span style='font-size:11px;color:{T["text_muted"]};padding-top:3px;'>⭐ · +{row["NewReviews"]} Rez.</span>
-                        {f'<span style="font-size:11px;color:{T["text_muted"]};padding-top:3px;">· {nstr}</span>' if nstr else ""}
+                        {f'<span style="font-size:11px;color:{T["text_muted"]};padding-top:3px;">' + '·' + ' {nstr}</span>' if nstr else ""}
                     </div>{nlstr}</div>""", unsafe_allow_html=True)
 else:
     st.markdown(
@@ -720,14 +709,14 @@ else:
 
 st.divider()
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 12 · TABS
-# ══════════════════════════════════════════════════════════════════
-tab1, tab2, tab3, tab4 = st.tabs(["  📊  Performance & Trends  ", "  💙  Zenloop Deep-Dive  ", "  📝  Management-Bericht  ", "  🔒  Team-Performer  "])
+# ══════════════════════════════════════════════════════════════════════════════════════════
+tab1, tab2, tab3, tab4 = st.tabs(["  📊  Performance & Trends  ", "  💙  Zenloop Deep-Dive  ", "  📝  Management-Bericht  ", "  🔐  Team-Performer  "])
 
-# ──────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────────────────
 # TAB 1 · PERFORMANCE & TRENDS
-# ──────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────────────────
 with tab1:
     col_l, col_r = st.columns(2, gap="large")
     with col_l:
@@ -760,26 +749,6 @@ with tab1:
         fig_rv.update_layout(**plotly_base(), yaxis=dict(gridcolor=PGRD, zeroline=False), xaxis=dict(gridcolor="rgba(0,0,0,0)", zeroline=False), height=190, bargap=0.42, margin=dict(l=4, r=10, t=8, b=8))
         st.plotly_chart(fig_rv, use_container_width=True)
 
-        # ── Erstgäste nach Region ──
-        if not df_erstgaeste.empty:
-            eg_tab = df_erstgaeste[df_erstgaeste["Monat"] == sel_monat].copy()
-            if not eg_tab.empty and eg_tab["Erstgaeste"].sum() > 0:
-                section_title("Erstgäste nach Region", f"Neukunden im Monat {sel_monat}")
-                eg_tab = eg_tab.sort_values("Erstgaeste", ascending=True)
-                bar_c_eg = eg_tab["Erstgaeste"].apply(lambda x: C_ORANGE if x > 0 else C_STONE).tolist()
-                fig_eg = go.Figure(go.Bar(
-                    x=eg_tab["Erstgaeste"], y=eg_tab["Regionalleitung"],
-                    orientation="h", marker=dict(color=bar_c_eg, line=dict(width=0)),
-                    text=eg_tab["Erstgaeste"], textposition="outside",
-                    textfont=dict(color=PFG, size=12)
-                ))
-                fig_eg.update_layout(
-                    **plotly_base(), xaxis=dict(range=[0, max(eg_tab["Erstgaeste"].max() * 1.3, 1)], zeroline=False, tickfont=dict(size=11)),
-                    yaxis=dict(tickfont=dict(size=11, color=T["text_second"])),
-                    margin=dict(l=4, r=55, t=8, b=8), height=max(200, len(eg_tab) * 40), bargap=0.38
-                )
-                st.plotly_chart(fig_eg, use_container_width=True)
-
     st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
     section_title("Studio-Übersicht", f"Sortiert nach Rating · {sel_monat}")
     disp_c = [c for c in ["Studio_Name", "Rating", "NewReviews", "TotalReviews", "NPS", "Regionalleitung"] if c in df_curr.columns]
@@ -799,9 +768,9 @@ with tab1:
     st.dataframe(df_d, use_container_width=True, hide_index=True)
 
 
-# ──────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────────────────
 # TAB 2 · ZENLOOP DEEP-DIVE
-# ──────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────────────────
 with tab2:
     if df_zen.empty:
         st.warning("⚠️ Keine Zenloop-Daten. Bitte 'Zenloop_Antworten.csv' bereitstellen.")
@@ -851,7 +820,7 @@ with tab2:
                                 <span style='font-size:22px;font-weight:800;color:{type_color};line-height:1;'>{int(row["score"])}</span>
                                 <span style='font-size:10px;font-weight:700;color:{type_color};background:{type_bg};padding:3px 9px;border-radius:100px;text-transform:uppercase;letter-spacing:0.6px;'>{row["score_type"]}</span>
                             </div>
-                            <div style='font-size:12.5px;color:{T["text_second"]};line-height:1.6;font-style:italic;'>„{str(row["comment"])[:200]}{"…" if len(str(row["comment"])) > 200 else ""}"</div>
+                            <div style='font-size:12.5px;color:{T["text_second"]};line-height:1.6;font-style:italic;'> „{str(row["comment"])[:200]}{"…" if len(str(row["comment"])) > 200 else ""}"</div>
                         </div>""", unsafe_allow_html=True)
 
         st.divider()
@@ -912,9 +881,9 @@ with tab2:
             st.dataframe(df_nr, use_container_width=True, hide_index=True)
 
 
-# ──────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────────────────
 # TAB 3 · MANAGEMENT-BERICHT (alle Downloads hier)
-# ──────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────────────────
 with tab3:
     section_title("Management-Bericht", "Automatisch aus echten Daten · Trend-Analyse, Insights und Handlungsempfehlungen")
 
@@ -942,14 +911,14 @@ with tab3:
         f"Region    : {sel_rl}", f"Monat     : {sel_monat}", f"Erstellt  : {jetzt}",
         s1, "",
         "I.  ÜBERBLICK", s2,
-        f"  Google Ø-Rating          : {avg_rating:.2f} ⭐" + (f"   ({delta_r:+.2f} ggü. {vormonat})" if delta_r is not None else ""),
+        f"  Google Ø-Rating    : {avg_rating:.2f} ⭐" + (f"   ({delta_r:+.2f} ggü. {vormonat})" if delta_r is not None else ""),
         f"  Neue Rezensionen         : {new_rev}",
         f"  Google Rez. Gesamt       : {total_rev}",
         f"  Zenloop NPS              : {fmt_n(nps_ges)}",
         f"  Positive Stimmung        : {f'{sentiment:.0f}%' if sentiment else 'keine Daten'}" + (f"   ({n_zen} Antworten)" if n_zen > 0 else ""),
         "",
     ]
-    if avg_rating >= RATING_GOOD: lines.append("  💚 Gesamtbewertung: STARK – Region über Zielmarke.")
+    if avg_rating >= RATING_GOOD: lines.append("  💙 Gesamtbewertung: STARK – Region über Zielmarke.")
     elif avg_rating >= RATING_MIN: lines.append("  🟡 Gesamtbewertung: SOLIDE – Einzelne Studios brauchen Aufmerksamkeit.")
     else: lines.append("  🔴 Gesamtbewertung: KRITISCH – Sofortmaßnahmen erforderlich!")
 
@@ -984,7 +953,7 @@ with tab3:
     if not atl.empty or not anl.empty:
         lines += ["", "V.  KUNDENFEEDBACK-INSIGHTS", s2]
         if not atl.empty:
-            lines.append("  📌 Meistgenannte Themen:")
+            lines.append("  📋 Meistgenannte Themen:")
             for lbl, cnt in atl.items(): lines.append(f"      • {lbl} ({cnt}×)")
         if not anl.empty:
             lines += ["", "  ⚠️  Hauptkritikpunkte (Detraktoren):"]
@@ -995,7 +964,7 @@ with tab3:
     bericht = "\n".join(lines)
     st.text_area("", value=bericht, height=540, label_visibility="collapsed")
 
-    # ── ALLE DOWNLOADS ───────────────────────────────────────────
+    # ── ALLE DOWNLOADS ───────────────────────────────────────────────────────────────────
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
     section_title("Alle Downloads", "Berichte und Daten-Exporte")
     dl1, dl2 = st.columns(2)
@@ -1003,20 +972,20 @@ with tab3:
         st.download_button("📄 Bericht als .txt", data=bericht.encode("utf-8"), file_name=f"Senzera_Bericht_{sel_rl}_{sel_monat}.txt", mime="text/plain", use_container_width=True)
     with dl2:
         snap = [c for c in ["Studiokürzel", "Stadt", "Rating", "NewReviews", "TotalReviews", "NPS"] if c in df_curr.columns]
-        st.download_button("📥 Daten-Snapshot (CSV)", data=df_curr[snap].to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"), file_name=f"Senzera_Snapshot_{sel_rl}_{sel_monat}.csv", mime="text/csv", use_container_width=True)
+        st.download_button("📦 Daten-Snapshot (CSV)", data=df_curr[snap].to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"), file_name=f"Senzera_Snapshot_{sel_rl}_{sel_monat}.csv", mime="text/csv", use_container_width=True)
     dl3, dl4 = st.columns(2)
     with dl3:
-        st.download_button("📥 Alle Google-Daten (CSV)", data=df_view.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"), file_name=f"Senzera_Google_{sel_monat}.csv", mime="text/csv", use_container_width=True)
+        st.download_button("📦 Alle Google-Daten (CSV)", data=df_view.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"), file_name=f"Senzera_Google_{sel_monat}.csv", mime="text/csv", use_container_width=True)
     with dl4:
         if not df_zen.empty:
-            st.download_button("📥 Zenloop-Daten (CSV)", data=df_zen.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"), file_name=f"Senzera_Zenloop_{sel_monat}.csv", mime="text/csv", use_container_width=True)
+            st.download_button("📦 Zenloop-Daten (CSV)", data=df_zen.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"), file_name=f"Senzera_Zenloop_{sel_monat}.csv", mime="text/csv", use_container_width=True)
         else:
-            st.button("📥 Zenloop – keine Daten", disabled=True, use_container_width=True)
+            st.button("📦 Zenloop – keine Daten", disabled=True, use_container_width=True)
 
 
-# ──────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────────────────
 # TAB 4 · TEAM-PERFORMER (passwortgeschützt)
-# ──────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────────────────
 PERFORMER_BIN = "performer_encrypted.bin"
 
 def _derive_key(password: str, salt: bytes) -> bytes:
@@ -1180,9 +1149,9 @@ with tab4:
         st.dataframe(df_detail, use_container_width=True, hide_index=True)
 
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 # 13 · FOOTER
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════════════════
 st.divider()
 st.markdown(
     f"""<div style='display:flex;align-items:center;justify-content:space-between;padding:28px 0 16px;'>
