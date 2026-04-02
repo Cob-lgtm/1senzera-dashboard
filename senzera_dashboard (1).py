@@ -201,7 +201,9 @@ div, span, p, label, input, select, textarea, button {{
 /* Fix: Material Icons für Sidebar-Toggle wiederherstellen */
 [data-testid="stSidebarCollapseButton"] button span,
 [data-testid="collapsedControl"] button span,
-[data-testid="stSidebarCollapsedControl"] button span {{
+[data-testid="stSidebarCollapsedControl"] button span,
+[data-testid="stExpandSidebarButton"] span,
+[data-testid="stIconMaterial"] {{
     font-family: "Material Symbols Rounded" !important;
 }}
 
