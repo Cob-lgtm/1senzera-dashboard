@@ -418,6 +418,17 @@ if df_google.empty:
 # ══════════════════════════════════════════════════════════════════════════════════════════
 # 6 · HELFER
 # ══════════════════════════════════════════════════════════════════════════════════════════
+_MONAT_MAP = {"Januar": "01", "Februar": "02", "März": "03", "April": "04",
+              "Mai": "05", "Juni": "06", "Juli": "07", "August": "08",
+              "September": "09", "Oktober": "10", "November": "11", "Dezember": "12"}
+
+def monat_to_period(monat_str: str) -> str:
+    """Convert 'März 2026' → '2026-03' for Zenloop Monat_zen matching."""
+    parts = monat_str.split()
+    if len(parts) == 2 and parts[0] in _MONAT_MAP:
+        return f"{parts[1]}-{_MONAT_MAP[parts[0]]}"
+    return ""
+
 def calc_nps(df: pd.DataFrame) -> Optional[float]:
     if df.empty or "score_type" not in df.columns: return None
     total = len(df)
@@ -615,7 +626,8 @@ idx_curr = months_s.index(sel_monat) if sel_monat in months_s else -1
 vormonat = months_s[idx_curr - 1] if idx_curr > 0 else None
 df_vm    = df_view[df_view["Monat"] == vormonat].copy() if vormonat else pd.DataFrame()
 sel_codes = df_curr["Studiokürzel"].unique()
-df_zen   = df_zenloop[df_zenloop["Property - studio"].isin(sel_codes)].copy() if not df_zenloop.empty else pd.DataFrame()
+zen_period = monat_to_period(sel_monat)
+df_zen   = df_zenloop[(df_zenloop["Property - studio"].isin(sel_codes)) & (df_zenloop["Monat_zen"] == zen_period)].copy() if not df_zenloop.empty else pd.DataFrame()
 
 avg_rating = df_curr["Rating"].mean() if not df_curr.empty else 0.0
 new_rev    = int(df_curr["NewReviews"].sum()) if not df_curr.empty else 0
@@ -670,7 +682,7 @@ if nps_ges is not None:
 else:
     k4.metric("Zenloop NPS", "–", delta="keine Daten", delta_color="off")
 k5.metric("Positive Stimmung", f"{sentiment:.0f}%" if sentiment is not None else "–", delta="der Kommentare", delta_color="off", help="Anteil positiver Kommentare")
-k6.metric("Zenloop Antworten", f"{n_zen:,}".replace(",", "."), delta="Gesamtzeitraum", delta_color="off")
+k6.metric("Zenloop Antworten", f"{n_zen:,}".replace(",", "."), delta=sel_monat, delta_color="off")
 
 # ══════════════════════════════════════════════════════════════════════════════════════════
 # 11 · ALARM
