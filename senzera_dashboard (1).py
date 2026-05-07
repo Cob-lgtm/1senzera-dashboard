@@ -1,11 +1,15 @@
 """
-Senzera Performance Hub – v7.0 (Google Reviews only)
-=====================================================
+Senzera Performance Hub – v7.1 (Google Reviews only, chronologisch sortierte Monate)
+=====================================================================================
 Starten:  streamlit run senzera_dashboard.py
 Datei:    Senzera_Dashboard_Data.csv
 
 Schlanke Variante: zeigt ausschließlich Google-Bewertungen je Studio,
 mit Trend-Verlauf und auto-generiertem Management-Bericht.
+
+v7.1: Bugfix — Monate werden jetzt chronologisch sortiert (vorher alphabetisch,
+       wodurch April 2026 fälschlich vor Februar 2026 landete und der Default
+       auf März statt April fiel).
 """
 
 from __future__ import annotations
@@ -58,6 +62,22 @@ C_RED         = "#C83010"
 RATING_MIN  = 4.2
 RATING_GOOD = 4.5
 REQ_GOOGLE  = {"Studiokürzel", "Stadt", "Regionalleitung", "Rating"}
+
+# Chronologische Monats-Sortierung (deutsche Monatsnamen → Datum)
+_DE_MONAT_NUM = {
+    "Januar": 1, "Februar": 2, "März": 3, "April": 4, "Mai": 5, "Juni": 6,
+    "Juli": 7, "August": 8, "September": 9, "Oktober": 10, "November": 11, "Dezember": 12,
+}
+
+def monat_sort_key(monat_str: str):
+    """Wandelt 'April 2026' in (2026, 4) um — fürs chronologische Sortieren."""
+    try:
+        parts = str(monat_str).split()
+        if len(parts) == 2 and parts[0] in _DE_MONAT_NUM:
+            return (int(parts[1]), _DE_MONAT_NUM[parts[0]])
+    except Exception:
+        pass
+    return (9999, 99)  # unbekannt nach hinten
 
 # ══════════════════════════════════════════════════════════════════
 # 3 · THEME DEFINITIONEN
@@ -447,7 +467,8 @@ with st.sidebar:
         st.session_state.prev_rl = sel_rl
         st.session_state.rl_version = st.session_state.get("rl_version", 0) + 1
 
-    all_months = sorted(df_rl["Monat"].dropna().unique().tolist())
+    # ── Monate chronologisch sortieren (Bugfix v7.1) ────────────
+    all_months = sorted(df_rl["Monat"].dropna().unique().tolist(), key=monat_sort_key)
     if len(all_months) > 1:
         sel_monat = st.selectbox("Berichtsmonat", all_months, index=len(all_months) - 1)
     else:
@@ -507,7 +528,7 @@ with st.sidebar:
 # ══════════════════════════════════════════════════════════════════
 df_view  = df_rl[df_rl["Studio_Name"].isin(sel_studios)].copy()
 df_curr  = df_view[df_view["Monat"] == sel_monat].copy()
-months_s = sorted(df_view["Monat"].dropna().unique().tolist())
+months_s = sorted(df_view["Monat"].dropna().unique().tolist(), key=monat_sort_key)
 idx_curr = months_s.index(sel_monat) if sel_monat in months_s else -1
 vormonat = months_s[idx_curr - 1] if idx_curr > 0 else None
 df_vm    = df_view[df_view["Monat"] == vormonat].copy() if vormonat else pd.DataFrame()
@@ -653,7 +674,10 @@ with tab1:
 
     with col_r:
         section_title("Trend-Verlauf", "Monatlicher Ø-Rating")
-        trend = df_view.groupby("Monat", sort=False)["Rating"].mean().reset_index().rename(columns={"Rating": "Ø Rating"})
+        # Trend chronologisch
+        trend = df_view.groupby("Monat")["Rating"].mean().reset_index().rename(columns={"Rating": "Ø Rating"})
+        trend["_o"] = trend["Monat"].apply(monat_sort_key)
+        trend = trend.sort_values("_o").drop(columns=["_o"])
         if not trend.empty:
             fig_tr = go.Figure()
             fig_tr.add_trace(go.Scatter(
@@ -799,7 +823,7 @@ st.markdown(
     f"""<div style='display:flex;align-items:center;justify-content:space-between;padding:28px 0 16px;'>
         <div>
             <div style='font-size:13px;font-weight:700;color:{T["text_h"]};font-family:"Playfair Display",serif;'>Performance Hub</div>
-            <div style='font-size:10px;color:{T["text_muted"]};letter-spacing:0.3px;'>v7 · waxing & beauty</div>
+            <div style='font-size:10px;color:{T["text_muted"]};letter-spacing:0.3px;'>v7.1 · waxing & beauty</div>
         </div>
         <div style='text-align:right;'>
             <div style='font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:{T["text_muted"]};margin-bottom:2px;'>Datenschutz</div>
